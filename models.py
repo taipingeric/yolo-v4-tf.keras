@@ -1,6 +1,9 @@
+import numpy as np
+
+import tensorflow as tf
 from tensorflow.keras import activations, layers, regularizers, initializers, models
 import tensorflow.keras.backend as K
-
+from utils import load_weights
 
 def mish(x):
     return x*activations.tanh(K.softplus(x))
@@ -31,26 +34,30 @@ def conv(x, filters, kernel_size, downsampling=False, activation='leaky', batch_
     return x
 
 
-'''
-filters1: 1x1, 
-filters2: 3x3
-'''
-
-
 def residual_block(x, filters1, filters2, activation='leaky'):
+    """
+    :param x: input tensor
+    :param filters1: num of filter for 1x1 conv
+    :param filters2: num of filter for 3x3 conv
+    :param activation: default activation function: leaky relu
+    :return:
+    """
     y = conv(x, filters1, kernel_size=1, activation=activation)
     y = conv(y, filters2, kernel_size=3, activation=activation)
     return layers.Add()([x, y])
 
 
-'''
-Cross Stage Partial Network (CSPNet)
-transition_bottleneck_dims: 1x1 bottleneck
-output_dims: 3x3
-'''
-
-
 def csp_block(x, residual_out, repeat, residual_bottleneck=False):
+    """
+    Cross Stage Partial Network (CSPNet)
+    transition_bottleneck_dims: 1x1 bottleneck
+    output_dims: 3x3
+    :param x:
+    :param residual_out:
+    :param repeat:
+    :param residual_bottleneck:
+    :return:
+    """
     route = x
     route = conv(route, residual_out, 1, activation="mish")
     x = conv(x, residual_out, 1, activation="mish")
@@ -195,3 +202,128 @@ def yolov4(x, num_classes):
     conv_lbbox = conv(x, 3 * (num_classes + 5), 1, activation=None, batch_norm=False)
 
     return [conv_sbbox, conv_mbbox, conv_lbbox]
+
+
+class Yolov4(object):
+    def __init__(self,
+                 class_names,
+                 weight_path=None,
+                 img_size=(416, 416, 3),
+                 anchors=[12, 16, 19, 36, 40, 28, 36, 75, 76, 55, 72, 146, 142, 110, 192, 243, 459, 401],
+                 strides=[8, 16, 32],
+                 output_sizes=[52, 26, 13],
+                 xyscale=[1.2, 1.1, 1.05],
+                 ):
+        self.class_names = class_names
+        self.img_size = img_size
+        self.num_classes = len(class_names)
+        self.weight_path = weight_path
+        self.anchors = np.array(anchors).reshape((3, 3, 2))
+        self.xyscale = xyscale
+        self.strides = strides
+        self.output_sizes = output_sizes
+        assert self.num_classes > 0
+
+
+    def build_model(self):
+        input_layer = layers.Input(self.img_size)
+        yolov4_output = yolov4(input_layer, self.num_classes)
+        self.yolo_model = models.Model(input_layer, yolov4_output)
+
+        if self.weight_path == 'yolov4.weights':
+            load_weights(self.yolo_model, self.weight_path)
+
+        yolov4_output = self.yolo_model.output
+        bbox0, object_probability0, class_probabilities0, pred_box0 = get_boxes(yolov4_output[0], anchors=self.anchors[0, :, :], classes=80, grid_size=52, strides=8,
+                            xyscale=self.xyscale[0])
+        bbox1, object_probability1, class_probabilities1, pred_box1 = get_boxes(yolov4_output[1], anchors=self.anchors[1, :, :], classes=80, grid_size=26, strides=16,
+                            xyscale=self.xyscale[1])
+        bbox2, object_probability2, class_probabilities2, pred_box2 = get_boxes(yolov4_output[2], anchors=self.anchors[2, :, :], classes=80, grid_size=13, strides=32,
+                            xyscale=self.xyscale[2])
+        # x = (boxes_0, boxes_1, boxes_2)
+        x = [bbox0, object_probability0, class_probabilities0, pred_box0,
+             bbox1, object_probability1, class_probabilities1, pred_box1,
+             bbox2, object_probability2, class_probabilities2, pred_box2]
+        print('len(x): ', len(x), x)
+        # x = pre_nms(x)
+        self.inference_model = models.Model(input_layer, get_nms(x))  # [boxes, scores, classes, valid_detections]
+
+
+def get_boxes(pred, anchors, classes, grid_size, strides, xyscale):
+    #     grid_size = tf.shape(pred)[1]
+    ##
+    pred = tf.reshape(pred,
+                      (tf.shape(pred)[0],
+                       grid_size,
+                       grid_size,
+                       3,
+                       5 + classes))  # (batch_size, grid_size, grid_size, 3, 5+classes)
+    ##
+    box_xy, box_wh, object_probability, class_probabilities = tf.split(
+        pred, (2, 2, 1, classes), axis=-1
+    )  # (?, 52, 52, 3, 2) (?, 52, 52, 3, 2) (?, 52, 52, 3, 1) (?, 52, 52, 3, 80)
+
+    box_xy = tf.sigmoid(box_xy)  # (?, 52, 52, 3, 2)
+    object_probability = tf.sigmoid(object_probability)  # (?, 52, 52, 3, 1)
+    class_probabilities = tf.sigmoid(class_probabilities)  # (?, 52, 52, 3, 80)
+    pred_box = tf.concat((box_xy, box_wh), axis=-1)  # (?, 52, 52, 3, 4)
+
+    grid = tf.meshgrid(tf.range(grid_size), tf.range(grid_size))  # (52, 52) (52, 52)
+    grid = tf.expand_dims(tf.stack(grid, axis=-1), axis=2)  # (52, 52, 1, 2)
+    grid = tf.cast(grid, dtype=tf.float32)
+
+    box_xy = ((box_xy * xyscale) - 0.5 * (xyscale - 1) + grid) * strides
+
+    box_wh = tf.exp(box_wh) * anchors
+    box_x1y1 = box_xy - box_wh / 2
+    box_x2y2 = box_xy + box_wh / 2
+    bbox = tf.concat([box_x1y1, box_x2y2], axis=-1)
+    return bbox, object_probability, class_probabilities, pred_box
+
+
+def pre_nms(outputs):
+    bs = tf.shape(outputs[0])[0]
+    print(len(outputs))
+    print('bs: ', bs)
+    boxes = tf.zeros((bs, 0, 4))
+    confidence = tf.zeros((bs, 0, 1))
+    class_probabilities = tf.zeros((bs, 0, 80))
+
+    for output_idx in range(0, len(outputs), 4):
+        output_xy = outputs[output_idx]
+        output_conf = outputs[output_idx + 1]
+        output_classes = outputs[output_idx + 2]
+        print(boxes.shape, output_xy.shape)
+        boxes = tf.concat([boxes, tf.reshape(output_xy, (bs, -1, 4))], axis=1)
+        confidence = tf.concat([confidence, tf.reshape(output_conf, (bs, -1, 1))], axis=1)
+        class_probabilities = tf.concat([class_probabilities, tf.reshape(output_classes, (bs, -1, 80))], axis=1)
+
+    scores = confidence * class_probabilities
+    boxes = tf.expand_dims(boxes, axis=-2)
+    boxes = boxes / 416
+    return boxes, scores
+
+def get_nms(outputs):
+    """
+    Apply non-max suppression and get valid detections.
+    Args:
+        outputs: yolo model outputs.
+
+    Returns:
+        boxes, scores, classes, valid_detections
+    """
+    boxes, scores = pre_nms(outputs)
+    (
+        boxes,
+        scores,
+        classes,
+        valid_detections,
+    ) = tf.image.combined_non_max_suppression(
+        boxes=boxes, # y1x1, y2x2 [0~1]
+        scores=scores,
+        max_output_size_per_class=100, #self.max_boxes,
+        max_total_size=100, # self.max_boxes, max_boxes: Maximum boxes in a single image.
+        iou_threshold=0.1, # self.iou_threshold, iou_threshold: Minimum overlap that counts as a valid detection.
+        score_threshold=0.1, # self.score_threshold, # Minimum confidence that counts as a valid detection.
+    )
+    return boxes, scores, classes, valid_detections
