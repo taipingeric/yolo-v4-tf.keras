@@ -252,16 +252,17 @@ class Yolov4(object):
         img = img / 255.
         return img
 
-    def predict_on_img(self, img_path):
-        raw_img = cv2.imread(img_path)[:, :, ::-1]
+    def predict(self, img_path):
+        raw_img = cv2.imread(img_path)
         img = self.preprocess_img(raw_img)
         imgs = np.expand_dims(img, axis=0)
         pred_output = self.inference_model.predict(imgs)
         detections = get_detection_data(image=raw_img,
                                         outputs=pred_output,
                                         class_names=self.class_names)
-        print(detections)
+        # print(detections)
         draw_on_image(raw_img, detections, self.class_names, cmap=self.class_color)
+        return detections
 
 
 
@@ -301,8 +302,6 @@ def get_boxes(pred, anchors, classes, grid_size, strides, xyscale):
 
 def pre_nms(outputs):
     bs = tf.shape(outputs[0])[0]
-    print(len(outputs))
-    print('bs: ', bs)
     boxes = tf.zeros((bs, 0, 4))
     confidence = tf.zeros((bs, 0, 1))
     class_probabilities = tf.zeros((bs, 0, 80))
@@ -311,7 +310,6 @@ def pre_nms(outputs):
         output_xy = outputs[output_idx]
         output_conf = outputs[output_idx + 1]
         output_classes = outputs[output_idx + 2]
-        print(boxes.shape, output_xy.shape)
         boxes = tf.concat([boxes, tf.reshape(output_xy, (bs, -1, 4))], axis=1)
         confidence = tf.concat([confidence, tf.reshape(output_conf, (bs, -1, 1))], axis=1)
         class_probabilities = tf.concat([class_probabilities, tf.reshape(output_classes, (bs, -1, 80))], axis=1)
@@ -340,8 +338,8 @@ def get_nms(outputs):
         boxes=boxes, # y1x1, y2x2 [0~1]
         scores=scores,
         max_output_size_per_class=100, #self.max_boxes,
-        max_total_size=100, # self.max_boxes, max_boxes: Maximum boxes in a single image.
-        iou_threshold=0.1, # self.iou_threshold, iou_threshold: Minimum overlap that counts as a valid detection.
-        score_threshold=0.1, # self.score_threshold, # Minimum confidence that counts as a valid detection.
+        max_total_size=100, # max_boxes: Maximum boxes in a single image.
+        iou_threshold=0.413, # iou_threshold: Minimum overlap that counts as a valid detection.
+        score_threshold=0.1, # # Minimum confidence that counts as a valid detection.
     )
     return boxes, scores, classes, valid_detections

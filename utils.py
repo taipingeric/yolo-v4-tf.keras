@@ -103,7 +103,7 @@ def draw_on_image(adjusted, detections, class_names, cmap, random_color=True):
     :param class_names:
     :return: None
     """
-    adjusted = adjusted.copy()
+    adjusted = adjusted[:,:,::-1].copy()
     for index, row in detections.iterrows():
         cls, x1, y1, x2, y2, score, w, h = row.values
         color = list(np.random.random(size=3)*255) if random_color else cmap[cls]
