@@ -88,14 +88,15 @@ def draw_bbox(img, detections, cmap, random_color=True, plot_img=True):
         color = list(np.random.random(size=3) * 255) if random_color else cmap[cls]
         cv2.rectangle(img, (x1, y1), (x2, y2), color, 4)
         cv2.putText(img,
-                    f'{cls} {round(score, 2)}',
-                    (x1, y1 - 10),
-                    cv2.FONT_HERSHEY_COMPLEX_SMALL,
-                    1,
+                    f'{cls} {score:.2f}',
+                    (x1, y1 - 5),
+                    cv2.FONT_HERSHEY_DUPLEX,
+                    0.5,
                     (255, 255, 255),
-                    2)
+                    1,
+                    cv2.LINE_AA)
     if plot_img:
-        plt.figure(figsize=(20, 20))
+        plt.figure(figsize=(15, 15))
         plt.imshow(img)
         plt.show()
     return img
