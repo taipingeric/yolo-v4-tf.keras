@@ -4,7 +4,7 @@ import cv2
 import tensorflow as tf
 from tensorflow.keras import activations, layers, regularizers, initializers, models
 import tensorflow.keras.backend as K
-from utils import load_weights, get_detection_data, draw_on_image
+from utils import load_weights, get_detection_data, draw_bbox
 
 def mish(x):
     return x*activations.tanh(K.softplus(x))
@@ -261,7 +261,7 @@ class Yolov4(object):
                                         outputs=pred_output,
                                         class_names=self.class_names)
         # print(detections)
-        draw_on_image(raw_img, detections, self.class_names, cmap=self.class_color)
+        draw_bbox(raw_img, detections, cmap=self.class_color)
         return detections
 
 

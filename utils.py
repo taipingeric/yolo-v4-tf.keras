@@ -95,28 +95,30 @@ def get_detection_data(image, outputs, class_names):
     return data
 
 
-def draw_on_image(adjusted, detections, class_names, cmap, random_color=True):
+def draw_bbox(img, detections, cmap, random_color=True, plot_img=True):
     """
     Draw bounding boxes on the image.
-    :param adjusted: BGR image.
+    :param img: BGR image.
     :param detections: pandas DataFrame containing detections
-    :param class_names:
+    :param random_color: assign random color for each objects
+    :param cmap: object colormap
+    :param plot_img: if plot image with bboxes
     :return: None
     """
-    adjusted = adjusted[:,:,::-1].copy()
-    for index, row in detections.iterrows():
+    img = img[:, :, ::-1].copy()  # BGR -> RGB for plot image
+    for row in detections:
         cls, x1, y1, x2, y2, score, w, h = row.values
-        color = list(np.random.random(size=3)*255) if random_color else cmap[cls]
-        cv2.rectangle(adjusted, (x1, y1), (x2, y2), color, 4)
-        cv2.putText(
-            adjusted,
-            f'{cls} {round(score, 2)}',
-            (x1, y1 - 10),
-            cv2.FONT_HERSHEY_COMPLEX_SMALL,
-            1,
-            (255, 255, 255),
-            2,
-        )
-    plt.figure(figsize=(20, 20))
-    plt.imshow(adjusted)
-    plt.show()
+        color = list(np.random.random(size=3) * 255) if random_color else cmap[cls]
+        cv2.rectangle(img, (x1, y1), (x2, y2), color, 4)
+        cv2.putText(img,
+                    f'{cls} {round(score, 2)}',
+                    (x1, y1 - 10),
+                    cv2.FONT_HERSHEY_COMPLEX_SMALL,
+                    1,
+                    (255, 255, 255),
+                    2)
+    if plot_img:
+        plt.figure(figsize=(20, 20))
+        plt.imshow(img)
+        plt.show()
+    return img

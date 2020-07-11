@@ -1,2 +1,3 @@
 yolov4.weights
 .idea
+__pycache__/
