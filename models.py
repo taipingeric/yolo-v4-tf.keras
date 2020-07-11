@@ -1,9 +1,10 @@
 import numpy as np
+import cv2
 
 import tensorflow as tf
 from tensorflow.keras import activations, layers, regularizers, initializers, models
 import tensorflow.keras.backend as K
-from utils import load_weights
+from utils import load_weights, get_detection_data, draw_on_image
 
 def mish(x):
     return x*activations.tanh(K.softplus(x))
@@ -206,22 +207,23 @@ def yolov4(x, num_classes):
 
 class Yolov4(object):
     def __init__(self,
-                 class_names,
                  weight_path=None,
                  img_size=(416, 416, 3),
                  anchors=[12, 16, 19, 36, 40, 28, 36, 75, 76, 55, 72, 146, 142, 110, 192, 243, 459, 401],
                  strides=[8, 16, 32],
                  output_sizes=[52, 26, 13],
                  xyscale=[1.2, 1.1, 1.05],
+                 class_name_path='coco_classes.txt',
                  ):
-        self.class_names = class_names
+        self.class_names = [line.strip() for line in open(class_name_path).readlines()]
         self.img_size = img_size
-        self.num_classes = len(class_names)
+        self.num_classes = len(self.class_names)
         self.weight_path = weight_path
         self.anchors = np.array(anchors).reshape((3, 3, 2))
         self.xyscale = xyscale
         self.strides = strides
         self.output_sizes = output_sizes
+        self.class_color = {name: list(np.random.random(size=3)*255) for name in self.class_names}
         assert self.num_classes > 0
 
     def build_model(self, load_pretrained=True):
@@ -244,6 +246,25 @@ class Yolov4(object):
              bbox2, object_probability2, class_probabilities2, pred_box2]
 
         self.inference_model = models.Model(input_layer, get_nms(x))  # [boxes, scores, classes, valid_detections]
+
+    def preprocess_img(self, img):
+        img = cv2.resize(img, self.img_size[:2])
+        img = img / 255.
+        return img
+
+    def predict_on_img(self, img_path):
+        raw_img = cv2.imread(img_path)[:, :, ::-1]
+        img = self.preprocess_img(raw_img)
+        imgs = np.expand_dims(img, axis=0)
+        pred_output = self.inference_model.predict(imgs)
+        detections = get_detection_data(image=raw_img,
+                                        outputs=pred_output,
+                                        class_names=self.class_names)
+        print(detections)
+        draw_on_image(raw_img, detections, self.class_names, cmap=self.class_color)
+
+
+
 
 
 def get_boxes(pred, anchors, classes, grid_size, strides, xyscale):

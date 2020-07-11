@@ -50,12 +50,11 @@ def load_weights(model, weights_file, model_name='yolov4', is_tiny=False):
     wf.close()
 
 
-def get_detection_data(image, image_name, outputs, class_names):
+def get_detection_data(image, outputs, class_names):
     """
     Organize predictions of a single image into a pandas DataFrame.
     Args:
         image: Image as a numpy array.
-        image_name: str, name to write in the image column.
         outputs: Outputs from inference_model.predict()
         class_names: A list of object class names.
 
@@ -72,60 +71,51 @@ def get_detection_data(image, image_name, outputs, class_names):
         boxes, scores, classes = [
             item[0][: int(nums)].numpy() for item in outputs[:-1]
         ]
-    w, h = np.flip(image.shape[0:2])
+    # h, w = np.flip(image.shape[0:2])
+    h, w = image.shape[:2]
     data = pd.DataFrame(boxes, columns=['x1', 'y1', 'x2', 'y2'])
     data[['x1', 'x2']] = (data[['x1', 'x2']] * w).astype('int64')
     data[['y1', 'y2']] = (data[['y1', 'y2']] * h).astype('int64')
-    data['object_name'] = np.array(class_names)[classes.astype('int64')]
-    data['image'] = image_name
+    data['class_name'] = np.array(class_names)[classes.astype('int64')]
     data['score'] = scores
-    data['image_width'] = w
-    data['image_height'] = h
+    data['width'] = w
+    data['height'] = h
     data = data[
         [
-            'image',
-            'object_name',
+            'class_name',
             'x1',
             'y1',
             'x2',
             'y2',
             'score',
-            'image_width',
-            'image_height',
+            'width',
+            'height',
         ]
     ]
     return data
 
 
-def draw_on_image(adjusted, detections):
+def draw_on_image(adjusted, detections, class_names, cmap, random_color=True):
     """
     Draw bounding boxes on the image.
     :param adjusted: BGR image.
     :param detections: pandas DataFrame containing detections
+    :param class_names:
     :return: None
     """
     adjusted = adjusted.copy()
     for index, row in detections.iterrows():
-        img, obj, x1, y1, x2, y2, score, *_ = row.values
-        color = {
-            class_name: color
-            for class_name, color in zip(
-                [str(i) for i in range(80)],
-                [
-                    list(np.random.random(size=3) * 256)
-                    for _ in range(80)
-                ],
-            )
-        }[obj]
-        cv2.rectangle(adjusted, (x1, y1), (x2, y2), color, 2)
+        cls, x1, y1, x2, y2, score, w, h = row.values
+        color = list(np.random.random(size=3)*255) if random_color else cmap[cls]
+        cv2.rectangle(adjusted, (x1, y1), (x2, y2), color, 4)
         cv2.putText(
             adjusted,
-            f'{obj}-{round(score, 2)}',
+            f'{cls} {round(score, 2)}',
             (x1, y1 - 10),
             cv2.FONT_HERSHEY_COMPLEX_SMALL,
-            0.6,
-            color,
             1,
+            (255, 255, 255),
+            2,
         )
     plt.figure(figsize=(20, 20))
     plt.imshow(adjusted)
