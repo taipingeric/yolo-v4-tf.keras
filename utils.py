@@ -106,7 +106,7 @@ def draw_bbox(img, detections, cmap, random_color=True, plot_img=True):
     :return: None
     """
     img = img[:, :, ::-1].copy()  # BGR -> RGB for plot image
-    for row in detections:
+    for _, row in detections.iterrows():
         cls, x1, y1, x2, y2, score, w, h = row.values
         color = list(np.random.random(size=3) * 255) if random_color else cmap[cls]
         cv2.rectangle(img, (x1, y1), (x2, y2), color, 4)

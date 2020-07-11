@@ -340,6 +340,6 @@ def get_nms(outputs):
         max_output_size_per_class=100, #self.max_boxes,
         max_total_size=100, # max_boxes: Maximum boxes in a single image.
         iou_threshold=0.413, # iou_threshold: Minimum overlap that counts as a valid detection.
-        score_threshold=0.1, # # Minimum confidence that counts as a valid detection.
+        score_threshold=0.5, # # Minimum confidence that counts as a valid detection.
     )
     return boxes, scores, classes, valid_detections
