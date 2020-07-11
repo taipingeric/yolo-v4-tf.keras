@@ -6,11 +6,11 @@ from tensorflow.keras import activations, layers, regularizers, initializers, mo
 import tensorflow.keras.backend as K
 from utils import load_weights, get_detection_data, draw_bbox
 
-def mish(x):
-    return x*activations.tanh(K.softplus(x))
-
 
 def conv(x, filters, kernel_size, downsampling=False, activation='leaky', batch_norm=True):
+    def mish(x):
+        return x * activations.tanh(K.softplus(x))
+
     if downsampling:
         x = layers.ZeroPadding2D(padding=((1, 0), (1, 0)))(x)  # top & left padding
         padding = 'valid'
@@ -115,12 +115,12 @@ def cspdarknet53(input):
 
     x = csp_block(x, residual_out=128, repeat=8)
     x = conv(x, 256, 1, activation='mish')
-    route1 = x
+    route0 = x
     x = conv(x, 512, 3, activation='mish', downsampling=True)
 
     x = csp_block(x, residual_out=256, repeat=8)
     x = conv(x, 512, 1, activation='mish')
-    route2 = x
+    route1 = x
     x = conv(x, 1024, 3, activation='mish', downsampling=True)
 
     x = csp_block(x, residual_out=512, repeat=4)
@@ -138,47 +138,44 @@ def cspdarknet53(input):
     ])
     x = conv(x, 512, 1)
     x = conv(x, 1024, 3)
-    x = conv(x, 512, 1)
-    return models.Model(input, [route1, route2, x])
+    route2 = conv(x, 512, 1)
+    return models.Model(input, [route0, route1, route2])
 
 
-#     return route1, route2, x
+def yolov4_neck(x, num_classes):
+    backbone_model = cspdarknet53(x)
+    route0, route1, route2 = backbone_model.output
 
-
-def yolov4(x, num_classes):
-    cspdarknet = cspdarknet53(x)
-    route1, route2, conv_output = cspdarknet.output
-
-    route = conv_output
-    x = conv(conv_output, 256, 1)
+    route_input = route2
+    x = conv(route2, 256, 1)
     x = layers.UpSampling2D()(x)
-    route2 = conv(route2, 256, 1)
-    x = layers.Concatenate()([route2, x])
-
-    x = conv(x, 256, 1)
-    x = conv(x, 512, 3)
-    x = conv(x, 256, 1)
-    x = conv(x, 512, 3)
-    x = conv(x, 256, 1)
-
-    route2 = x
-    x = conv(x, 128, 1)
-    x = layers.UpSampling2D()(x)
-    route1 = conv(route1, 128, 1)
+    route1 = conv(route1, 256, 1)
     x = layers.Concatenate()([route1, x])
 
+    x = conv(x, 256, 1)
+    x = conv(x, 512, 3)
+    x = conv(x, 256, 1)
+    x = conv(x, 512, 3)
+    x = conv(x, 256, 1)
+
+    route1 = x
+    x = conv(x, 128, 1)
+    x = layers.UpSampling2D()(x)
+    route0 = conv(route0, 128, 1)
+    x = layers.Concatenate()([route0, x])
+
     x = conv(x, 128, 1)
     x = conv(x, 256, 3)
     x = conv(x, 128, 1)
     x = conv(x, 256, 3)
     x = conv(x, 128, 1)
 
-    route1 = x
+    route0 = x
     x = conv(x, 256, 3)
     conv_sbbox = conv(x, 3 * (num_classes + 5), 1, activation=None, batch_norm=False)
 
-    x = conv(route1, 256, 3, downsampling=True)
-    x = layers.Concatenate()([x, route2])
+    x = conv(route0, 256, 3, downsampling=True)
+    x = layers.Concatenate()([x, route1])
 
     x = conv(x, 256, 1)
     x = conv(x, 512, 3)
@@ -186,12 +183,12 @@ def yolov4(x, num_classes):
     x = conv(x, 512, 3)
     x = conv(x, 256, 1)
 
-    route2 = x
+    route1 = x
     x = conv(x, 512, 3)
     conv_mbbox = conv(x, 3 * (num_classes + 5), 1, activation=None, batch_norm=False)
 
-    x = conv(route2, 512, 3, downsampling=True)
-    x = layers.Concatenate()([x, route])
+    x = conv(route1, 512, 3, downsampling=True)
+    x = layers.Concatenate()([x, route_input])
 
     x = conv(x, 512, 1)
     x = conv(x, 1024, 3)
@@ -204,6 +201,24 @@ def yolov4(x, num_classes):
 
     return [conv_sbbox, conv_mbbox, conv_lbbox]
 
+def yolov4_head(yolo_neck_outputs, anchors, xyscale):
+    bbox0, object_probability0, class_probabilities0, pred_box0 = get_boxes(yolo_neck_outputs[0],
+                                                                            anchors=anchors[0, :, :], classes=80,
+                                                                            grid_size=52, strides=8,
+                                                                            xyscale=xyscale[0])
+    bbox1, object_probability1, class_probabilities1, pred_box1 = get_boxes(yolo_neck_outputs[1],
+                                                                            anchors=anchors[1, :, :], classes=80,
+                                                                            grid_size=26, strides=16,
+                                                                            xyscale=xyscale[1])
+    bbox2, object_probability2, class_probabilities2, pred_box2 = get_boxes(yolo_neck_outputs[2],
+                                                                            anchors=anchors[2, :, :], classes=80,
+                                                                            grid_size=13, strides=32,
+                                                                            xyscale=xyscale[2])
+    x = [bbox0, object_probability0, class_probabilities0, pred_box0,
+         bbox1, object_probability1, class_probabilities1, pred_box1,
+         bbox2, object_probability2, class_probabilities2, pred_box2]
+
+    return x
 
 class Yolov4(object):
     def __init__(self,
@@ -228,24 +243,14 @@ class Yolov4(object):
 
     def build_model(self, load_pretrained=True):
         input_layer = layers.Input(self.img_size)
-        yolov4_output = yolov4(input_layer, self.num_classes)
+        yolov4_output = yolov4_neck(input_layer, self.num_classes)
         self.yolo_model = models.Model(input_layer, yolov4_output)
 
         if load_pretrained and self.weight_path and self.weight_path.endswith('.weights'):
             load_weights(self.yolo_model, self.weight_path)
 
-        yolov4_output = self.yolo_model.output
-        bbox0, object_probability0, class_probabilities0, pred_box0 = get_boxes(yolov4_output[0], anchors=self.anchors[0, :, :], classes=80, grid_size=52, strides=8,
-                            xyscale=self.xyscale[0])
-        bbox1, object_probability1, class_probabilities1, pred_box1 = get_boxes(yolov4_output[1], anchors=self.anchors[1, :, :], classes=80, grid_size=26, strides=16,
-                            xyscale=self.xyscale[1])
-        bbox2, object_probability2, class_probabilities2, pred_box2 = get_boxes(yolov4_output[2], anchors=self.anchors[2, :, :], classes=80, grid_size=13, strides=32,
-                            xyscale=self.xyscale[2])
-        x = [bbox0, object_probability0, class_probabilities0, pred_box0,
-             bbox1, object_probability1, class_probabilities1, pred_box1,
-             bbox2, object_probability2, class_probabilities2, pred_box2]
-
-        self.inference_model = models.Model(input_layer, nms(x))  # [boxes, scores, classes, valid_detections]
+        yolov4_output = yolov4_head(yolov4_output, self.anchors, self.xyscale)
+        self.inference_model = models.Model(input_layer, nms(yolov4_output))  # [boxes, scores, classes, valid_detections]
 
     def preprocess_img(self, img):
         img = cv2.resize(img, self.img_size[:2])
