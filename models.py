@@ -224,13 +224,12 @@ class Yolov4(object):
         self.output_sizes = output_sizes
         assert self.num_classes > 0
 
-
-    def build_model(self):
+    def build_model(self, load_pretrained=True):
         input_layer = layers.Input(self.img_size)
         yolov4_output = yolov4(input_layer, self.num_classes)
         self.yolo_model = models.Model(input_layer, yolov4_output)
 
-        if self.weight_path == 'yolov4.weights':
+        if load_pretrained and self.weight_path and self.weight_path.endswith('.weights'):
             load_weights(self.yolo_model, self.weight_path)
 
         yolov4_output = self.yolo_model.output
@@ -240,12 +239,10 @@ class Yolov4(object):
                             xyscale=self.xyscale[1])
         bbox2, object_probability2, class_probabilities2, pred_box2 = get_boxes(yolov4_output[2], anchors=self.anchors[2, :, :], classes=80, grid_size=13, strides=32,
                             xyscale=self.xyscale[2])
-        # x = (boxes_0, boxes_1, boxes_2)
         x = [bbox0, object_probability0, class_probabilities0, pred_box0,
              bbox1, object_probability1, class_probabilities1, pred_box1,
              bbox2, object_probability2, class_probabilities2, pred_box2]
-        print('len(x): ', len(x), x)
-        # x = pre_nms(x)
+
         self.inference_model = models.Model(input_layer, get_nms(x))  # [boxes, scores, classes, valid_detections]
 
 

@@ -3,6 +3,7 @@ import cv2
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
 def load_weights(model, weights_file, model_name='yolov4', is_tiny=False):
     layer_size = 110
     output_pos = [93, 101, 109]
@@ -41,12 +42,13 @@ def load_weights(model, weights_file, model_name='yolov4', is_tiny=False):
             bn_layer.set_weights(bn_weights)
         else:
             conv_layer.set_weights([conv_weights, conv_bias])
-    print(len(wf.read()))
+
     if len(wf.read()) == 0:
-        print('all read')
+        print('all weights read')
     else:
-        print(f'failed to read  all data left : {len(wf.read())}')
+        print(f'failed to read  all weights, # of unread weights: {len(wf.read())}')
     wf.close()
+
 
 def get_detection_data(image, image_name, outputs, class_names):
     """
@@ -94,15 +96,13 @@ def get_detection_data(image, image_name, outputs, class_names):
     ]
     return data
 
+
 def draw_on_image(adjusted, detections):
     """
-    Draw bounding boxes over the image.
-    Args:
-        adjusted: BGR image.
-        detections: pandas DataFrame containing detections
-
-    Returns:
-        None
+    Draw bounding boxes on the image.
+    :param adjusted: BGR image.
+    :param detections: pandas DataFrame containing detections
+    :return: None
     """
     adjusted = adjusted.copy()
     for index, row in detections.iterrows():
@@ -117,11 +117,6 @@ def draw_on_image(adjusted, detections):
                 ],
             )
         }[obj]
-        # self.box_colors.get(obj)
-#         x1 = int(x1 * 416)
-#         x2 = int(x2 * 416)
-#         y1 = int(y1 * 416)
-#         y2 = int(y2 * 416)
         cv2.rectangle(adjusted, (x1, y1), (x2, y2), color, 2)
         cv2.putText(
             adjusted,
