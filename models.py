@@ -254,13 +254,13 @@ class Yolov4(object):
 
     def predict(self, img_path):
         raw_img = cv2.imread(img_path)
+        print('img shape: ', raw_img.shape)
         img = self.preprocess_img(raw_img)
         imgs = np.expand_dims(img, axis=0)
         pred_output = self.inference_model.predict(imgs)
-        detections = get_detection_data(image=raw_img,
-                                        outputs=pred_output,
+        detections = get_detection_data(img=raw_img,
+                                        model_outputs=pred_output,
                                         class_names=self.class_names)
-        # print(detections)
         draw_bbox(raw_img, detections, cmap=self.class_color)
         return detections
 
@@ -336,7 +336,7 @@ def nms(model_ouputs):
         boxes=output_boxes,  # y1x1, y2x2 [0~1]
         scores=output_scores,
         max_output_size_per_class=100,
-        max_total_size=100,  # max_boxes: Maximum nmsed_boxes in a single image.
+        max_total_size=100,  # max_boxes: Maximum nmsed_boxes in a single img.
         iou_threshold=0.413,  # iou_threshold: Minimum overlap that counts as a valid detection.
         score_threshold=0.5,  # # Minimum confidence that counts as a valid detection.
     )

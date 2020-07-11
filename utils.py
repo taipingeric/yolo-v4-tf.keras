@@ -50,63 +50,43 @@ def load_weights(model, weights_file, model_name='yolov4', is_tiny=False):
     wf.close()
 
 
-def get_detection_data(image, outputs, class_names):
+def get_detection_data(img, model_outputs, class_names):
     """
-    Organize predictions of a single image into a pandas DataFrame.
-    Args:
-        image: Image as a numpy array.
-        outputs: Outputs from inference_model.predict()
-        class_names: A list of object class names.
 
-    Returns:
-        data: pandas DataFrame with the detections.
+    :param img: target raw image
+    :param model_outputs: outputs from inference_model
+    :param class_names: list of object class names
+    :return:
     """
-    nums = outputs[-1]
-    boxes, scores, classes = 3 * [None]
-    if isinstance(outputs[0], np.ndarray):
-        boxes, scores, classes = [
-            item[0][: int(nums)] for item in outputs[:-1]
-        ]
-    if not isinstance(outputs[0], np.ndarray):
-        boxes, scores, classes = [
-            item[0][: int(nums)].numpy() for item in outputs[:-1]
-        ]
-    h, w = image.shape[:2]
-    data = pd.DataFrame(boxes, columns=['x1', 'y1', 'x2', 'y2'])
-    data[['x1', 'x2']] = (data[['x1', 'x2']] * w).astype('int64')
-    data[['y1', 'y2']] = (data[['y1', 'y2']] * h).astype('int64')
-    data['class_name'] = np.array(class_names)[classes.astype('int64')]
-    data['score'] = scores
-    data['width'] = w
-    data['height'] = h
-    data = data[
-        [
-            'class_name',
-            'x1',
-            'y1',
-            'x2',
-            'y2',
-            'score',
-            'width',
-            'height',
-        ]
-    ]
-    return data
+
+    num_bboxes = model_outputs[-1][0]
+    boxes, scores, classes = [output[0][:num_bboxes] for output in model_outputs[:-1]]
+
+    h, w = img.shape[:2]
+    df = pd.DataFrame(boxes, columns=['x1', 'y1', 'x2', 'y2'])
+    df[['x1', 'x2']] = (df[['x1', 'x2']] * w).astype('int64')
+    df[['y1', 'y2']] = (df[['y1', 'y2']] * h).astype('int64')
+    df['class_name'] = np.array(class_names)[classes.astype('int64')]
+    df['score'] = scores
+    df = df[['class_name', 'x1', 'y1', 'x2', 'y2', 'score']]  # reorder columns
+
+    print(f'# of bboxes: ', num_bboxes)
+    return df
 
 
 def draw_bbox(img, detections, cmap, random_color=True, plot_img=True):
     """
-    Draw bounding boxes on the image.
-    :param img: BGR image.
+    Draw bounding boxes on the img.
+    :param img: BGR img.
     :param detections: pandas DataFrame containing detections
     :param random_color: assign random color for each objects
     :param cmap: object colormap
-    :param plot_img: if plot image with bboxes
+    :param plot_img: if plot img with bboxes
     :return: None
     """
-    img = img[:, :, ::-1].copy()  # BGR -> RGB for plot image
+    img = img[:, :, ::-1].copy()  # BGR -> RGB for plot img
     for _, row in detections.iterrows():
-        cls, x1, y1, x2, y2, score, w, h = row.values
+        cls, x1, y1, x2, y2, score = row.values
         color = list(np.random.random(size=3) * 255) if random_color else cmap[cls]
         cv2.rectangle(img, (x1, y1), (x2, y2), color, 4)
         cv2.putText(img,
