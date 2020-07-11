@@ -245,7 +245,7 @@ class Yolov4(object):
              bbox1, object_probability1, class_probabilities1, pred_box1,
              bbox2, object_probability2, class_probabilities2, pred_box2]
 
-        self.inference_model = models.Model(input_layer, get_nms(x))  # [boxes, scores, classes, valid_detections]
+        self.inference_model = models.Model(input_layer, nms(x))  # [boxes, scores, classes, valid_detections]
 
     def preprocess_img(self, img):
         img = cv2.resize(img, self.img_size[:2])
@@ -319,27 +319,25 @@ def pre_nms(outputs):
     boxes = boxes / 416
     return boxes, scores
 
-def get_nms(outputs):
+def nms(model_ouputs):
     """
-    Apply non-max suppression and get valid detections.
-    Args:
-        outputs: yolo model outputs.
+    Apply Non-Maximum suppression
+    ref: https://www.tensorflow.org/api_docs/python/tf/image/combined_non_max_suppression
+    :param model_ouputs: yolo model model_ouputs
+    :return: nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
+    """
+    output_boxes, output_scores = pre_nms(model_ouputs)
 
-    Returns:
-        boxes, scores, classes, valid_detections
-    """
-    boxes, scores = pre_nms(outputs)
-    (
-        boxes,
-        scores,
-        classes,
-        valid_detections,
-    ) = tf.image.combined_non_max_suppression(
-        boxes=boxes, # y1x1, y2x2 [0~1]
-        scores=scores,
-        max_output_size_per_class=100, #self.max_boxes,
-        max_total_size=100, # max_boxes: Maximum boxes in a single image.
-        iou_threshold=0.413, # iou_threshold: Minimum overlap that counts as a valid detection.
-        score_threshold=0.5, # # Minimum confidence that counts as a valid detection.
+    (nmsed_boxes,      # [bs, max_detections, 4]
+     nmsed_scores,     # [bs, max_detections]
+     nmsed_classes,    # [bs, max_detections]
+     valid_detections  # [batch_size]
+     ) = tf.image.combined_non_max_suppression(
+        boxes=output_boxes,  # y1x1, y2x2 [0~1]
+        scores=output_scores,
+        max_output_size_per_class=100,
+        max_total_size=100,  # max_boxes: Maximum nmsed_boxes in a single image.
+        iou_threshold=0.413,  # iou_threshold: Minimum overlap that counts as a valid detection.
+        score_threshold=0.5,  # # Minimum confidence that counts as a valid detection.
     )
-    return boxes, scores, classes, valid_detections
+    return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
