@@ -9,7 +9,7 @@ from utils import load_weights, get_detection_data, draw_bbox
 
 def conv(x, filters, kernel_size, downsampling=False, activation='leaky', batch_norm=True):
     def mish(x):
-        return x * activations.tanh(K.softplus(x))
+        return layers.Lambda(lambda x: x * activations.tanh(K.softplus(x)))(x)
 
     if downsampling:
         x = layers.ZeroPadding2D(padding=((1, 0), (1, 0)))(x)  # top & left padding
@@ -251,6 +251,9 @@ class Yolov4(object):
 
         yolov4_output = yolov4_head(yolov4_output, self.anchors, self.xyscale)
         self.inference_model = models.Model(input_layer, nms(yolov4_output))  # [boxes, scores, classes, valid_detections]
+
+    def save_model(self, path):
+        self.yolo_model.save(path)
 
     def preprocess_img(self, img):
         img = cv2.resize(img, self.img_size[:2])
