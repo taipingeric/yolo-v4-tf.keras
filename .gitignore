@@ -2,3 +2,4 @@ yolov4.weights
 .idea
 __pycache__/
 *.h5
+.ipynb_checkpoints

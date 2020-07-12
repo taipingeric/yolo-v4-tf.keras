@@ -252,6 +252,12 @@ class Yolov4(object):
         yolov4_output = yolov4_head(yolov4_output, self.anchors, self.xyscale)
         self.inference_model = models.Model(input_layer, nms(yolov4_output))  # [boxes, scores, classes, valid_detections]
 
+    def load_model(self, path):
+        self.yolo_model = models.load_model(path, compile=False)
+        yolov4_output = yolov4_head(self.yolo_model.output, self.anchors, self.xyscale)
+        self.inference_model = models.Model(self.yolo_model.input,
+                                            nms(yolov4_output))  # [boxes, scores, classes, valid_detections]
+
     def save_model(self, path):
         self.yolo_model.save(path)
 
