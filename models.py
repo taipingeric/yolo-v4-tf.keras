@@ -5,7 +5,7 @@ import tensorflow as tf
 from tensorflow.keras import activations, layers, regularizers, initializers, models
 import tensorflow.keras.backend as K
 from utils import load_weights, get_detection_data, draw_bbox
-
+from config import  yolo_config
 
 def conv(x, filters, kernel_size, downsampling=False, activation='leaky', batch_norm=True):
     def mish(x):
@@ -223,21 +223,24 @@ def yolov4_head(yolo_neck_outputs, anchors, xyscale):
 class Yolov4(object):
     def __init__(self,
                  weight_path=None,
-                 img_size=(416, 416, 3),
-                 anchors=[12, 16, 19, 36, 40, 28, 36, 75, 76, 55, 72, 146, 142, 110, 192, 243, 459, 401],
-                 strides=[8, 16, 32],
-                 output_sizes=[52, 26, 13],
-                 xyscale=[1.2, 1.1, 1.05],
+                 # img_size=(416, 416, 3),
+                 # anchors=[12, 16, 19, 36, 40, 28, 36, 75, 76, 55, 72, 146, 142, 110, 192, 243, 459, 401],
+                 # strides=[8, 16, 32],
+                 # output_sizes=[52, 26, 13],
+                 # xyscale=[1.2, 1.1, 1.05],
                  class_name_path='coco_classes.txt',
+                 config=yolo_config,
                  ):
+        assert config['img_size'][0] == config['img_size'][1], 'not support yet'
+        assert config['img_size'][0] % config['strides'][-1] == 0, 'must be a multiple of last stride'
         self.class_names = [line.strip() for line in open(class_name_path).readlines()]
-        self.img_size = img_size
+        self.img_size = yolo_config['img_size']
         self.num_classes = len(self.class_names)
         self.weight_path = weight_path
-        self.anchors = np.array(anchors).reshape((3, 3, 2))
-        self.xyscale = xyscale
-        self.strides = strides
-        self.output_sizes = output_sizes
+        self.anchors = np.array(yolo_config['anchors']).reshape((3, 3, 2))
+        self.xyscale = yolo_config['xyscale']
+        self.strides = yolo_config['strides']
+        self.output_sizes = [self.img_size[0] // s for s in self.strides]
         self.class_color = {name: list(np.random.random(size=3)*255) for name in self.class_names}
         assert self.num_classes > 0
 
