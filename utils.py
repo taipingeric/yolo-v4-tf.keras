@@ -111,7 +111,7 @@ class DataGenerator(Sequence):
     def __init__(self,
                  annotation_lines,
                  batch_size,
-                 img_size, # (416, 416)
+                 img_size,
                  folder_path,
                  max_boxes=100,
                  shuffle=True):
@@ -185,3 +185,83 @@ class DataGenerator(Sequence):
             box_data[:len(box)] = box
 
         return image_data, box_data
+
+
+def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes):
+    '''Preprocess true boxes to training input format
+
+    Parameters
+    ----------
+    true_boxes: array, shape=(bs, max boxes per img, 5)
+        Absolute x_min, y_min, x_max, y_max, class_id relative to input_shape.
+    input_shape: array-like, hw, multiples of 32
+    anchors: array, shape=(N, 2), (9, wh)
+    num_classes: int
+
+    Returns
+    -------
+    y_true: list of array, shape like yolo_outputs, xywh are reletive value
+
+    '''
+
+    num_stages = 3  # default setting for yolo, tiny yolo will be 2
+    anchor_mask = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
+    bbox_per_grid = 3
+
+    true_boxes = np.array(true_boxes, dtype='float32')
+    input_shape = np.array(input_shape, dtype='int32')
+    true_boxes_xy = (true_boxes[..., 0:2] + true_boxes[..., 2:4]) // 2  # (100, 2)
+    true_boxes_wh = true_boxes[..., 2:4] - true_boxes[..., 0:2]  # (100, 2)
+    # Normalize x,y relative to img size -> (0~1)
+    true_boxes[..., 0:2] = true_boxes_xy/input_shape[::-1]
+    true_boxes[..., 2:4] = true_boxes_wh/input_shape[::-1]
+
+    bs = true_boxes.shape[0]
+    grid_sizes = [input_shape//{0:8, 1:16, 2:32}[stage] for stage in range(num_stages)]
+    y_true = [np.zeros((bs,
+                        grid_sizes[s][0],
+                        grid_sizes[s][1],
+                        bbox_per_grid,
+                        5+num_classes), dtype='float32')
+              for s in range(num_stages)] # [(?, 52, 52, 3, 5+num_classes) (?, 26, 26, 3, 5+num_classes)  (?, 13, 13, 3, 5+num_classes) ]
+
+    # Expand dim to apply broadcasting.
+    anchors = np.expand_dims(anchors, 0)  # (1, 9 , 2)
+    anchor_maxes = anchors / 2.  # (1, 9 , 2)
+    anchor_mins = -anchor_maxes  # (1, 9 , 2)
+    valid_mask = true_boxes_wh[..., 0] > 0  # (1, 100)
+
+    for batch_idx in range(bs):
+        # Discard zero rows.
+        wh = true_boxes_wh[batch_idx, valid_mask[batch_idx]]  # (# of bbox, 2)
+        num_boxes = len(wh)
+        if num_boxes == 0: continue
+        wh = np.expand_dims(wh, -2)  # (# of bbox, 1, 2)
+        box_maxes = wh / 2.  # (# of bbox, 1, 2)
+        box_mins = -box_maxes  # (# of bbox, 1, 2)
+
+        # Compute IoU between each anchors and true boxes for responsibility assignment
+        intersect_mins = np.maximum(box_mins, anchor_mins)  # (# of bbox, 9, 2)
+        intersect_maxes = np.minimum(box_maxes, anchor_maxes)
+        intersect_wh = np.maximum(intersect_maxes - intersect_mins, 0.)
+        intersect_area = np.prod(intersect_wh, axis=-1)  # (9,)
+        box_area = wh[..., 0] * wh[..., 1]  # (# of bbox, 1)
+        anchor_area = anchors[..., 0] * anchors[..., 1]  # (1, 9)
+        iou = intersect_area / (box_area + anchor_area - intersect_area)  # (# of bbox, 9)
+
+        # Find best anchor for each true box
+        best_anchors = np.argmax(iou, axis=-1)  # (# of bbox,)
+        for box_idx in range(num_boxes):
+            best_anchor = best_anchors[box_idx]
+            for stage in range(num_stages):
+                if best_anchor in anchor_mask[stage]:
+                    # Grid Index
+                    grid_col = np.floor(true_boxes[batch_idx, box_idx, 0]*grid_sizes[stage][1]).astype('int32')
+                    grid_row = np.floor(true_boxes[batch_idx, box_idx, 1]*grid_sizes[stage][0]).astype('int32')
+                    anchor_idx = anchor_mask[stage].index(best_anchor)
+                    class_idx = true_boxes[batch_idx, box_idx, 4].astype('int32')
+                    y_true[stage][batch_idx, grid_row, grid_col, anchor_idx, 0:4] = true_boxes[batch_idx,box_idx, 0:4]  # bbox
+                    y_true[stage][batch_idx, grid_row, grid_col, anchor_idx, 4] = 1  # confidence
+                    y_true[stage][batch_idx, grid_row, grid_col, anchor_idx, 5+class_idx] = 1  # one-hot encoding
+
+    return y_true
