@@ -266,7 +266,7 @@ class Yolov4(object):
         img = img / 255.
         return img
 
-    def predict(self, img_path):
+    def predict(self, img_path, random_color=True):
         raw_img = cv2.imread(img_path)
         print('img shape: ', raw_img.shape)
         img = self.preprocess_img(raw_img)
@@ -275,7 +275,7 @@ class Yolov4(object):
         detections = get_detection_data(img=raw_img,
                                         model_outputs=pred_output,
                                         class_names=self.class_names)
-        draw_bbox(raw_img, detections, cmap=self.class_color)
+        draw_bbox(raw_img, detections, cmap=self.class_color, random_color=random_color)
         return detections
 
 
@@ -352,6 +352,6 @@ def nms(model_ouputs):
         max_output_size_per_class=100,
         max_total_size=100,  # max_boxes: Maximum nmsed_boxes in a single img.
         iou_threshold=0.413,  # iou_threshold: Minimum overlap that counts as a valid detection.
-        score_threshold=0.5,  # # Minimum confidence that counts as a valid detection.
+        score_threshold=0.3,  # # Minimum confidence that counts as a valid detection.
     )
     return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections

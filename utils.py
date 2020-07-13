@@ -66,7 +66,8 @@ def get_detection_data(img, model_outputs, class_names):
     df[['y1', 'y2']] = (df[['y1', 'y2']] * h).astype('int64')
     df['class_name'] = np.array(class_names)[classes.astype('int64')]
     df['score'] = scores
-    df = df[['class_name', 'x1', 'y1', 'x2', 'y2', 'score']]  # reorder columns
+    df['w'] = df['x2'] - df['x1']
+    df['h'] = df['y2'] - df['y1']
 
     print(f'# of bboxes: {num_bboxes}')
     return df
@@ -84,19 +85,17 @@ def draw_bbox(img, detections, cmap, random_color=True, plot_img=True):
     """
     img = img[:, :, ::-1].copy()  # BGR -> RGB for plot img
     for _, row in detections.iterrows():
-        cls, x1, y1, x2, y2, score = row.values
+        x1, y1, x2, y2, cls, score, w, h = row.values
         color = list(np.random.random(size=3) * 255) if random_color else cmap[cls]
-        cv2.rectangle(img, (x1, y1), (x2, y2), color, 4)
-        cv2.putText(img,
-                    f'{cls} {score:.2f}',
-                    (x1, y1 - 5),
-                    cv2.FONT_HERSHEY_DUPLEX,
-                    0.5,
-                    (255, 255, 255),
-                    1,
-                    cv2.LINE_AA)
+        cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+        text = f'{cls} {score:.2f}'
+        font = cv2.FONT_HERSHEY_DUPLEX
+        font_scale = 0.4
+        (text_width, text_height) = cv2.getTextSize(text, font, fontScale=font_scale, thickness=1)[0]
+        cv2.rectangle(img, (x1-1, y1-text_height-5), (x1+text_width, y1-2), color, cv2.FILLED)
+        cv2.putText(img, text, (x1, y1 - text_height//2), font, font_scale, (255, 255, 255), 1, cv2.LINE_AA)
     if plot_img:
-        plt.figure(figsize=(15, 15))
+        plt.figure(figsize=(20, 20))
         plt.imshow(img)
         plt.show()
     return img
