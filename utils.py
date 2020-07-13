@@ -2,6 +2,8 @@ import numpy as np
 import cv2
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
+from tensorflow.keras.utils import Sequence
 
 
 def load_weights(model, weights_file_path):
@@ -92,10 +94,94 @@ def draw_bbox(img, detections, cmap, random_color=True, plot_img=True):
         font = cv2.FONT_HERSHEY_DUPLEX
         font_scale = 0.4
         (text_width, text_height) = cv2.getTextSize(text, font, fontScale=font_scale, thickness=1)[0]
-        cv2.rectangle(img, (x1-1, y1-text_height-5), (x1+text_width, y1-2), color, cv2.FILLED)
-        cv2.putText(img, text, (x1, y1 - text_height//2), font, font_scale, (255, 255, 255), 1, cv2.LINE_AA)
+        cv2.rectangle(img, (x1 - 1, y1 - text_height - 5), (x1 + text_width, y1 - 2), color, cv2.FILLED)
+        cv2.putText(img, text, (x1, y1 - text_height // 2), font, font_scale, (255, 255, 255), 1, cv2.LINE_AA)
     if plot_img:
         plt.figure(figsize=(20, 20))
         plt.imshow(img)
         plt.show()
     return img
+
+
+class DataGenerator(Sequence):
+    """
+    Generates data for Keras
+    ref: https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
+    """
+    def __init__(self,
+                 annotation_lines,
+                 batch_size,
+                 img_size, # (416, 416)
+                 folder_path,
+                 max_boxes=100,
+                 shuffle=True):
+        self.annotation_lines = annotation_lines
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.target_img_size = img_size
+        self.indexes = np.arange(len(self.annotation_lines))
+        self.folder_path = folder_path
+        self.max_boxes = max_boxes
+        self.on_epoch_end()
+
+    def __len__(self):
+        'number of batches per epoch'
+        return int(np.ceil(len(self.annotation_lines) / self.batch_size))
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+
+        # Generate indexes of the batch
+        idxs = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
+
+        # Find list of IDs
+        lines = [self.annotation_lines[i] for i in idxs]
+
+        # Generate data
+        X, y = self.__data_generation(lines)
+
+        return X, y
+
+    def on_epoch_end(self):
+        'Updates indexes after each epoch'
+        if self.shuffle:
+            np.random.shuffle(self.indexes)
+
+    def __data_generation(self, annotation_lines):
+        """
+        Generates data containing batch_size samples
+        :param annotation_lines:
+        :return:
+        """
+
+        X = np.empty((len(annotation_lines), *self.target_img_size, 3))
+        y = np.empty((len(annotation_lines), self.max_boxes, 5))
+
+        for i, line in enumerate(annotation_lines):
+            img_data, box_data = self.get_data(line)
+            X[i] = img_data
+            y[i] = box_data
+
+        return X, y
+
+    def get_data(self, annotation_line):
+        line = annotation_line.split()
+        img_path = line[0]
+        img = cv2.imread(os.path.join(self.folder_path, img_path))[:, :, ::-1]
+        ih, iw = img.shape[:2]
+        h, w = self.target_img_size
+        box = np.array([np.array(list(map(int, box.split(',')))) for box in line[1:]])
+        scale_w, scale_h = w / iw, h / ih
+        img = cv2.resize(img, (w, h))
+        image_data = np.array(img) / 255.
+
+        # correct boxes coordinates
+        box_data = np.zeros((self.max_boxes, 5))
+        if len(box) > 0:
+            np.random.shuffle(box)
+            box = box[:self.max_boxes]
+            box[:, [0, 2]] = box[:, [0, 2]] * scale_w  # + dx
+            box[:, [1, 3]] = box[:, [1, 3]] * scale_h  # + dy
+            box_data[:len(box)] = box
+
+        return image_data, box_data
