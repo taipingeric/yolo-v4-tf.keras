@@ -308,12 +308,12 @@ def get_boxes(pred, anchors, classes, grid_size, strides, xyscale):
     grid = tf.expand_dims(tf.stack(grid, axis=-1), axis=2)  # (52, 52, 1, 2)
     grid = tf.cast(grid, dtype=tf.float32)
 
-    box_xy = ((box_xy * xyscale) - 0.5 * (xyscale - 1) + grid) * strides
+    box_xy = ((box_xy * xyscale) - 0.5 * (xyscale - 1) + grid) * strides # (52, 52, 1, 2)
 
-    box_wh = tf.exp(box_wh) * anchors
-    box_x1y1 = box_xy - box_wh / 2
-    box_x2y2 = box_xy + box_wh / 2
-    bbox = tf.concat([box_x1y1, box_x2y2], axis=-1)
+    box_wh = tf.exp(box_wh) * anchors # (?, 52, 52, 3, 2)
+    box_x1y1 = box_xy - box_wh / 2  # (?, 52, 52, 3, 2)
+    box_x2y2 = box_xy + box_wh / 2  # (?, 52, 52, 3, 2)
+    bbox = tf.concat([box_x1y1, box_x2y2], axis=-1) # # (?, 52, 52, 3, 4)
     return bbox, object_probability, class_probabilities, pred_box
 
 
