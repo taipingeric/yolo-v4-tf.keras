@@ -154,7 +154,7 @@ class DataGenerator(Sequence):
         :return:
         """
 
-        X = np.empty((len(annotation_lines), *self.target_img_size, 3))
+        X = np.empty((len(annotation_lines), *self.target_img_size, 3), dtype=np.float32)
         y = np.empty((len(annotation_lines), self.max_boxes, 5))
 
         for i, line in enumerate(annotation_lines):
@@ -212,9 +212,9 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes):
     input_shape = np.array(input_shape, dtype='int32')
     true_boxes_xy = (true_boxes[..., 0:2] + true_boxes[..., 2:4]) // 2  # (100, 2)
     true_boxes_wh = true_boxes[..., 2:4] - true_boxes[..., 0:2]  # (100, 2)
-    # Normalize x,y relative to img size -> (0~1)
-    true_boxes[..., 0:2] = true_boxes_xy/input_shape[::-1]
-    true_boxes[..., 2:4] = true_boxes_wh/input_shape[::-1]
+    # Normalize x,y,w, h, relative to img size -> (0~1)
+    true_boxes[..., 0:2] = true_boxes_xy/input_shape[::-1]  # xy
+    true_boxes[..., 2:4] = true_boxes_wh/input_shape[::-1]  # wh
 
     bs = true_boxes.shape[0]
     grid_sizes = [input_shape//{0:8, 1:16, 2:32}[stage] for stage in range(num_stages)]
