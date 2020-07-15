@@ -201,17 +201,17 @@ def yolov4_neck(x, num_classes):
 
     return [conv_sbbox, conv_mbbox, conv_lbbox]
 
-def yolov4_head(yolo_neck_outputs, anchors, xyscale):
+def yolov4_head(yolo_neck_outputs, classes, anchors, xyscale):
     bbox0, object_probability0, class_probabilities0, pred_box0 = get_boxes(yolo_neck_outputs[0],
-                                                                            anchors=anchors[0, :, :], classes=80,
+                                                                            anchors=anchors[0, :, :], classes=classes,
                                                                             grid_size=52, strides=8,
                                                                             xyscale=xyscale[0])
     bbox1, object_probability1, class_probabilities1, pred_box1 = get_boxes(yolo_neck_outputs[1],
-                                                                            anchors=anchors[1, :, :], classes=80,
+                                                                            anchors=anchors[1, :, :], classes=classes,
                                                                             grid_size=26, strides=16,
                                                                             xyscale=xyscale[1])
     bbox2, object_probability2, class_probabilities2, pred_box2 = get_boxes(yolo_neck_outputs[2],
-                                                                            anchors=anchors[2, :, :], classes=80,
+                                                                            anchors=anchors[2, :, :], classes=classes,
                                                                             grid_size=13, strides=32,
                                                                             xyscale=xyscale[2])
     x = [bbox0, object_probability0, class_probabilities0, pred_box0,
@@ -252,7 +252,7 @@ class Yolov4(object):
         if load_pretrained and self.weight_path and self.weight_path.endswith('.weights'):
             load_weights(self.yolo_model, self.weight_path)
 
-        yolov4_output = yolov4_head(yolov4_output, self.anchors, self.xyscale)
+        yolov4_output = yolov4_head(yolov4_output, self.num_classes, self.anchors, self.xyscale)
         self.inference_model = models.Model(input_layer, nms(yolov4_output))  # [boxes, scores, classes, valid_detections]
 
     def load_model(self, path):
@@ -308,12 +308,12 @@ def get_boxes(pred, anchors, classes, grid_size, strides, xyscale):
     grid = tf.expand_dims(tf.stack(grid, axis=-1), axis=2)  # (52, 52, 1, 2)
     grid = tf.cast(grid, dtype=tf.float32)
 
-    box_xy = ((box_xy * xyscale) - 0.5 * (xyscale - 1) + grid) * strides # (52, 52, 1, 2)
+    box_xy = ((box_xy * xyscale) - 0.5 * (xyscale - 1) + grid) * strides  # (52, 52, 1, 2)
 
-    box_wh = tf.exp(box_wh) * anchors # (?, 52, 52, 3, 2)
+    box_wh = tf.exp(box_wh) * anchors  # (?, 52, 52, 3, 2)
     box_x1y1 = box_xy - box_wh / 2  # (?, 52, 52, 3, 2)
     box_x2y2 = box_xy + box_wh / 2  # (?, 52, 52, 3, 2)
-    bbox = tf.concat([box_x1y1, box_x2y2], axis=-1) # # (?, 52, 52, 3, 4)
+    bbox = tf.concat([box_x1y1, box_x2y2], axis=-1)  # (?, 52, 52, 3, 4)
     return bbox, object_probability, class_probabilities, pred_box
 
 
@@ -358,3 +358,4 @@ def nms(model_ouputs):
         score_threshold=0.3,  # # Minimum confidence that counts as a valid detection.
     )
     return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
+
