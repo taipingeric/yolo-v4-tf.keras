@@ -317,41 +317,38 @@ def get_boxes(pred, anchors, classes, grid_size, strides, xyscale):
     return bbox, object_probability, class_probabilities, pred_box
 
 
-def pre_nms(outputs):
-    bs = tf.shape(outputs[0])[0]
-    boxes = tf.zeros((bs, 0, 4))
-    confidence = tf.zeros((bs, 0, 1))
-    class_probabilities = tf.zeros((bs, 0, 80))
-
-    for output_idx in range(0, len(outputs), 4):
-        output_xy = outputs[output_idx]
-        output_conf = outputs[output_idx + 1]
-        output_classes = outputs[output_idx + 2]
-        boxes = tf.concat([boxes, tf.reshape(output_xy, (bs, -1, 4))], axis=1)
-        confidence = tf.concat([confidence, tf.reshape(output_conf, (bs, -1, 1))], axis=1)
-        class_probabilities = tf.concat([class_probabilities, tf.reshape(output_classes, (bs, -1, 80))], axis=1)
-
-    scores = confidence * class_probabilities
-    boxes = tf.expand_dims(boxes, axis=-2)
-    boxes = boxes / 416
-    return boxes, scores
-
-def nms(model_ouputs):
+def nms(model_ouputs, input_shape):
     """
     Apply Non-Maximum suppression
     ref: https://www.tensorflow.org/api_docs/python/tf/image/combined_non_max_suppression
     :param model_ouputs: yolo model model_ouputs
     :return: nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
     """
-    output_boxes, output_scores = pre_nms(model_ouputs)
+    bs = tf.shape(model_ouputs[0])[0]
+    boxes = tf.zeros((bs, 0, 4))
+    confidence = tf.zeros((bs, 0, 1))
+    class_probabilities = tf.zeros((bs, 0, 80))
+
+    for output_idx in range(0, len(model_ouputs), 4):
+        output_xy = model_ouputs[output_idx]
+        output_conf = model_ouputs[output_idx + 1]
+        output_classes = model_ouputs[output_idx + 2]
+        boxes = tf.concat([boxes, tf.reshape(output_xy, (bs, -1, 4))], axis=1)
+        confidence = tf.concat([confidence, tf.reshape(output_conf, (bs, -1, 1))], axis=1)
+        class_probabilities = tf.concat([class_probabilities, tf.reshape(output_classes, (bs, -1, 80))], axis=1)
+
+    scores = confidence * class_probabilities
+    boxes = tf.expand_dims(boxes, axis=-2)
+    boxes = boxes / input_shape[0]  # box normalize
+
 
     (nmsed_boxes,      # [bs, max_detections, 4]
      nmsed_scores,     # [bs, max_detections]
      nmsed_classes,    # [bs, max_detections]
      valid_detections  # [batch_size]
      ) = tf.image.combined_non_max_suppression(
-        boxes=output_boxes,  # y1x1, y2x2 [0~1]
-        scores=output_scores,
+        boxes=boxes,  # y1x1, y2x2 [0~1]
+        scores=scores,
         max_output_size_per_class=100,
         max_total_size=100,  # max_boxes: Maximum nmsed_boxes in a single img.
         iou_threshold=0.413,  # iou_threshold: Minimum overlap that counts as a valid detection.
