@@ -253,13 +253,13 @@ class Yolov4(object):
             load_weights(self.yolo_model, self.weight_path)
 
         yolov4_output = yolov4_head(yolov4_output, self.num_classes, self.anchors, self.xyscale)
-        self.inference_model = models.Model(input_layer, nms(yolov4_output))  # [boxes, scores, classes, valid_detections]
+        self.inference_model = models.Model(input_layer, nms(yolov4_output, self.img_size))  # [boxes, scores, classes, valid_detections]
 
     def load_model(self, path):
         self.yolo_model = models.load_model(path, compile=False)
-        yolov4_output = yolov4_head(self.yolo_model.output, self.anchors, self.xyscale)
+        yolov4_output = yolov4_head(self.yolo_model.output, self.num_classes, self.anchors, self.xyscale)
         self.inference_model = models.Model(self.yolo_model.input,
-                                            nms(yolov4_output))  # [boxes, scores, classes, valid_detections]
+                                            nms(yolov4_output, self.img_size))  # [boxes, scores, classes, valid_detections]
 
     def save_model(self, path):
         self.yolo_model.save(path)
@@ -286,15 +286,22 @@ class Yolov4(object):
 
 
 def get_boxes(pred, anchors, classes, grid_size, strides, xyscale):
-    #     grid_size = tf.shape(pred)[1]
-    ##
+    """
+
+    :param pred:
+    :param anchors:
+    :param classes:
+    :param grid_size:
+    :param strides:
+    :param xyscale:
+    :return:
+    """
     pred = tf.reshape(pred,
                       (tf.shape(pred)[0],
                        grid_size,
                        grid_size,
                        3,
                        5 + classes))  # (batch_size, grid_size, grid_size, 3, 5+classes)
-    ##
     box_xy, box_wh, obj_prob, class_prob = tf.split(
         pred, (2, 2, 1, classes), axis=-1
     )  # (?, 52, 52, 3, 2) (?, 52, 52, 3, 2) (?, 52, 52, 3, 1) (?, 52, 52, 3, 80)
@@ -315,6 +322,7 @@ def get_boxes(pred, anchors, classes, grid_size, strides, xyscale):
     box_x2y2 = box_xy + box_wh / 2  # (?, 52, 52, 3, 2)
     pred_box_x1y1x2y2 = tf.concat([box_x1y1, box_x2y2], axis=-1)  # (?, 52, 52, 3, 4)
     return pred_box_x1y1x2y2, obj_prob, class_prob, pred_box_xywh
+    # pred_box_x1y1x2y2: absolute xy value
 
 
 def nms(model_ouputs, input_shape):
@@ -322,6 +330,7 @@ def nms(model_ouputs, input_shape):
     Apply Non-Maximum suppression
     ref: https://www.tensorflow.org/api_docs/python/tf/image/combined_non_max_suppression
     :param model_ouputs: yolo model model_ouputs
+    :param input_shape: size of input image
     :return: nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
     """
     bs = tf.shape(model_ouputs[0])[0]
@@ -340,7 +349,6 @@ def nms(model_ouputs, input_shape):
     scores = confidence * class_probabilities
     boxes = tf.expand_dims(boxes, axis=-2)
     boxes = boxes / input_shape[0]  # box normalize
-
 
     (nmsed_boxes,      # [bs, max_detections, 4]
      nmsed_scores,     # [bs, max_detections]
