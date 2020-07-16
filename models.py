@@ -223,11 +223,6 @@ def yolov4_head(yolo_neck_outputs, classes, anchors, xyscale):
 class Yolov4(object):
     def __init__(self,
                  weight_path=None,
-                 # img_size=(416, 416, 3),
-                 # anchors=[12, 16, 19, 36, 40, 28, 36, 75, 76, 55, 72, 146, 142, 110, 192, 243, 459, 401],
-                 # strides=[8, 16, 32],
-                 # output_sizes=[52, 26, 13],
-                 # xyscale=[1.2, 1.1, 1.05],
                  class_name_path='coco_classes.txt',
                  config=yolo_config,
                  ):
