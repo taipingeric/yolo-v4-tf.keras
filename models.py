@@ -295,26 +295,26 @@ def get_boxes(pred, anchors, classes, grid_size, strides, xyscale):
                        3,
                        5 + classes))  # (batch_size, grid_size, grid_size, 3, 5+classes)
     ##
-    box_xy, box_wh, object_probability, class_probabilities = tf.split(
+    box_xy, box_wh, obj_prob, class_prob = tf.split(
         pred, (2, 2, 1, classes), axis=-1
     )  # (?, 52, 52, 3, 2) (?, 52, 52, 3, 2) (?, 52, 52, 3, 1) (?, 52, 52, 3, 80)
 
     box_xy = tf.sigmoid(box_xy)  # (?, 52, 52, 3, 2)
-    object_probability = tf.sigmoid(object_probability)  # (?, 52, 52, 3, 1)
-    class_probabilities = tf.sigmoid(class_probabilities)  # (?, 52, 52, 3, 80)
-    pred_box = tf.concat((box_xy, box_wh), axis=-1)  # (?, 52, 52, 3, 4)
+    obj_prob = tf.sigmoid(obj_prob)  # (?, 52, 52, 3, 1)
+    class_prob = tf.sigmoid(class_prob)  # (?, 52, 52, 3, 80)
+    pred_box_xywh = tf.concat((box_xy, box_wh), axis=-1)  # (?, 52, 52, 3, 4)
 
     grid = tf.meshgrid(tf.range(grid_size), tf.range(grid_size))  # (52, 52) (52, 52)
     grid = tf.expand_dims(tf.stack(grid, axis=-1), axis=2)  # (52, 52, 1, 2)
     grid = tf.cast(grid, dtype=tf.float32)
 
-    box_xy = ((box_xy * xyscale) - 0.5 * (xyscale - 1) + grid) * strides  # (52, 52, 1, 2)
+    box_xy = ((box_xy * xyscale) - 0.5 * (xyscale - 1) + grid) * strides  # (?, 52, 52, 1, 4)
 
     box_wh = tf.exp(box_wh) * anchors  # (?, 52, 52, 3, 2)
     box_x1y1 = box_xy - box_wh / 2  # (?, 52, 52, 3, 2)
     box_x2y2 = box_xy + box_wh / 2  # (?, 52, 52, 3, 2)
-    bbox = tf.concat([box_x1y1, box_x2y2], axis=-1)  # (?, 52, 52, 3, 4)
-    return bbox, object_probability, class_probabilities, pred_box
+    pred_box_x1y1x2y2 = tf.concat([box_x1y1, box_x2y2], axis=-1)  # (?, 52, 52, 3, 4)
+    return pred_box_x1y1x2y2, obj_prob, class_prob, pred_box_xywh
 
 
 def nms(model_ouputs, input_shape):
