@@ -112,15 +112,19 @@ class DataGenerator(Sequence):
                  annotation_lines,
                  batch_size,
                  img_size,
+                 num_classes,
                  folder_path,
+                 anchors,
                  max_boxes=100,
                  shuffle=True):
         self.annotation_lines = annotation_lines
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.target_img_size = img_size
+        self.num_classes = num_classes
         self.indexes = np.arange(len(self.annotation_lines))
         self.folder_path = folder_path
+        self.anchors = anchors
         self.max_boxes = max_boxes
         self.on_epoch_end()
 
@@ -162,6 +166,7 @@ class DataGenerator(Sequence):
             X[i] = img_data
             y[i] = box_data
 
+        y = preprocess_true_boxes(y, self.target_img_size, self.anchors, self.num_classes)
         return X, y
 
     def get_data(self, annotation_line):
@@ -207,11 +212,12 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes):
     num_stages = 3  # default setting for yolo, tiny yolo will be 2
     anchor_mask = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
     bbox_per_grid = 3
-
     true_boxes = np.array(true_boxes, dtype='float32')
+    true_boxes_abs = np.array(true_boxes, dtype='float32')
     input_shape = np.array(input_shape, dtype='int32')
-    true_boxes_xy = (true_boxes[..., 0:2] + true_boxes[..., 2:4]) // 2  # (100, 2)
-    true_boxes_wh = true_boxes[..., 2:4] - true_boxes[..., 0:2]  # (100, 2)
+    true_boxes_xy = (true_boxes_abs[..., 0:2] + true_boxes_abs[..., 2:4]) // 2  # (100, 2)
+    true_boxes_wh = true_boxes_abs[..., 2:4] - true_boxes_abs[..., 0:2]  # (100, 2)
+
     # Normalize x,y,w, h, relative to img size -> (0~1)
     true_boxes[..., 0:2] = true_boxes_xy/input_shape[::-1]  # xy
     true_boxes[..., 2:4] = true_boxes_wh/input_shape[::-1]  # wh
@@ -223,7 +229,8 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes):
                         grid_sizes[s][1],
                         bbox_per_grid,
                         5+num_classes), dtype='float32')
-              for s in range(num_stages)] # [(?, 52, 52, 3, 5+num_classes) (?, 26, 26, 3, 5+num_classes)  (?, 13, 13, 3, 5+num_classes) ]
+              for s in range(num_stages)]
+    # [(?, 52, 52, 3, 5+num_classes) (?, 26, 26, 3, 5+num_classes)  (?, 13, 13, 3, 5+num_classes) ]
 
     # Expand dim to apply broadcasting.
     anchors = np.expand_dims(anchors, 0)  # (1, 9 , 2)
@@ -255,12 +262,16 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes):
             best_anchor = best_anchors[box_idx]
             for stage in range(num_stages):
                 if best_anchor in anchor_mask[stage]:
+                    x_offset = true_boxes[batch_idx, box_idx, 0]*grid_sizes[stage][1]
+                    y_offset = true_boxes[batch_idx, box_idx, 1]*grid_sizes[stage][0]
                     # Grid Index
-                    grid_col = np.floor(true_boxes[batch_idx, box_idx, 0]*grid_sizes[stage][1]).astype('int32')
-                    grid_row = np.floor(true_boxes[batch_idx, box_idx, 1]*grid_sizes[stage][0]).astype('int32')
+                    grid_col = np.floor(x_offset).astype('int32')
+                    grid_row = np.floor(y_offset).astype('int32')
                     anchor_idx = anchor_mask[stage].index(best_anchor)
                     class_idx = true_boxes[batch_idx, box_idx, 4].astype('int32')
-                    y_true[stage][batch_idx, grid_row, grid_col, anchor_idx, 0:4] = true_boxes[batch_idx,box_idx, 0:4]  # bbox
+                    # y_true[stage][batch_idx, grid_row, grid_col, anchor_idx, 0] = x_offset - grid_col  # x
+                    # y_true[stage][batch_idx, grid_row, grid_col, anchor_idx, 1] = y_offset - grid_row  # y
+                    y_true[stage][batch_idx, grid_row, grid_col, anchor_idx, :4] = true_boxes_abs[batch_idx, box_idx, :4] # abs xywh
                     y_true[stage][batch_idx, grid_row, grid_col, anchor_idx, 4] = 1  # confidence
                     y_true[stage][batch_idx, grid_row, grid_col, anchor_idx, 5+class_idx] = 1  # one-hot encoding
 
