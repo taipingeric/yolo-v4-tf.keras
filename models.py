@@ -7,9 +7,11 @@ import tensorflow.keras.backend as K
 from utils import load_weights, get_detection_data, draw_bbox
 from config import  yolo_config
 
+
 def conv(x, filters, kernel_size, downsampling=False, activation='leaky', batch_norm=True):
     def mish(x):
-        return layers.Lambda(lambda x: x * activations.tanh(K.softplus(x)))(x)
+        return x * tf.math.tanh(tf.math.softplus(x))
+        # return layers.Lambda(lambda x: x * activations.tanh(K.softplus(x)))(x)
 
     if downsampling:
         x = layers.ZeroPadding2D(padding=((1, 0), (1, 0)))(x)  # top & left padding
@@ -343,7 +345,7 @@ def nms(model_ouputs, input_shape):
 
     scores = confidence * class_probabilities
     boxes = tf.expand_dims(boxes, axis=-2)
-    boxes = boxes / input_shape[0]  # box normalize
+    boxes = boxes / input_shape[0]  # box normalization: relative img size
 
     (nmsed_boxes,      # [bs, max_detections, 4]
      nmsed_scores,     # [bs, max_detections]
