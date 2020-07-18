@@ -250,13 +250,13 @@ class Yolov4(object):
             load_weights(self.yolo_model, self.weight_path)
 
         yolov4_output = yolov4_head(yolov4_output, self.num_classes, self.anchors, self.xyscale)
-        self.inference_model = models.Model(input_layer, nms(yolov4_output, self.img_size))  # [boxes, scores, classes, valid_detections]
+        self.inference_model = models.Model(input_layer, nms(yolov4_output, self.img_size, self.num_classes))  # [boxes, scores, classes, valid_detections]
 
     def load_model(self, path):
         self.yolo_model = models.load_model(path, compile=False)
         yolov4_output = yolov4_head(self.yolo_model.output, self.num_classes, self.anchors, self.xyscale)
         self.inference_model = models.Model(self.yolo_model.input,
-                                            nms(yolov4_output, self.img_size))  # [boxes, scores, classes, valid_detections]
+                                            nms(yolov4_output, self.img_size, self.num_classes))  # [boxes, scores, classes, valid_detections]
 
     def save_model(self, path):
         self.yolo_model.save(path)
@@ -322,7 +322,7 @@ def get_boxes(pred, anchors, classes, grid_size, strides, xyscale):
     # pred_box_x1y1x2y2: absolute xy value
 
 
-def nms(model_ouputs, input_shape):
+def nms(model_ouputs, input_shape, num_class):
     """
     Apply Non-Maximum suppression
     ref: https://www.tensorflow.org/api_docs/python/tf/image/combined_non_max_suppression
@@ -333,7 +333,7 @@ def nms(model_ouputs, input_shape):
     bs = tf.shape(model_ouputs[0])[0]
     boxes = tf.zeros((bs, 0, 4))
     confidence = tf.zeros((bs, 0, 1))
-    class_probabilities = tf.zeros((bs, 0, 80))
+    class_probabilities = tf.zeros((bs, 0, num_class))
 
     for output_idx in range(0, len(model_ouputs), 4):
         output_xy = model_ouputs[output_idx]
@@ -341,7 +341,7 @@ def nms(model_ouputs, input_shape):
         output_classes = model_ouputs[output_idx + 2]
         boxes = tf.concat([boxes, tf.reshape(output_xy, (bs, -1, 4))], axis=1)
         confidence = tf.concat([confidence, tf.reshape(output_conf, (bs, -1, 1))], axis=1)
-        class_probabilities = tf.concat([class_probabilities, tf.reshape(output_classes, (bs, -1, 80))], axis=1)
+        class_probabilities = tf.concat([class_probabilities, tf.reshape(output_classes, (bs, -1, num_class))], axis=1)
 
     scores = confidence * class_probabilities
     boxes = tf.expand_dims(boxes, axis=-2)
