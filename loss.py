@@ -673,7 +673,7 @@ losses = [yolo_loss_wrapper(input_shape=(416, 416),
 
 # # In[31]:
 opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
-for i in range(10000):
+for step in range(10000):
     with tf.GradientTape() as tape:
         predict = model.yolo_model(x_batch)
         total_loss = 0
