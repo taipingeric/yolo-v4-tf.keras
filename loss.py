@@ -234,7 +234,7 @@ model = Yolov4(
               )
 model.build_model(load_pretrained=False)
 
-
+print('num class : ', model.num_classes)
 # In[19]:
 
 
@@ -694,14 +694,14 @@ y_pred[0], y_pred[0].shape, y_pred[1].shape, y_pred[2].shape
 
 losses = [yolo_loss_wrapper(input_shape=(416, 416), 
                   STRIDES=[8, 16, 32][i], 
-                  NUM_CLASS=3, 
+                  NUM_CLASS=80, 
                   ANCHORS=anchors.reshape(3, 3, 2)[i], 
                   XYSCALES=[1., 1., 1.][i], 
                   IOU_LOSS_THRESH=0.5) for i in range(3)]
 
 
 # # In[31]:
-opt = tf.keras.optimizers.Adam(learning_rate=1e-3)
+opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
 for i in range(10000):
     with tf.GradientTape() as tape:
         predict = model.yolo_model(x_batch)
@@ -714,8 +714,8 @@ for i in range(10000):
             loss_func = losses[i]
             giou_loss, conf_loss, prob_loss = loss_func(y_batch[i], predict[i])
             total_giou_loss += giou_loss
-            total_conf_loss += 0 # conf_loss
-            total_prob_loss += 0 # prob_loss
+            total_conf_loss += conf_loss
+            total_prob_loss += prob_loss
             total_loss = total_giou_loss + total_conf_loss + total_prob_loss
         gradients = tape.gradient(total_loss, model.yolo_model.trainable_variables)
         opt.apply_gradients(zip(gradients, model.yolo_model.trainable_variables))
