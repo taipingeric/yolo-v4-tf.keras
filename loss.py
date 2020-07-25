@@ -236,8 +236,13 @@ losses = [yolo_loss_wrapper(input_shape=(416, 416),
 # # In[31]:
 opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
 warmup_epochs = 20
-warmup_steps = 2 * 1
-total_steps = 0
+steps_per_epoch = 1
+warmup_steps = warmup_epochs * steps_per_epoch
+global_steps = 0
+first_stage_epoch = 200
+second_stage_epoch = 300
+total_steps = (first_stage_epoch + second_stage_epoch) * steps_per_epoch
+
 
 def train_step(x_batch, y_batch):
     with tf.GradientTape() as tape:
@@ -257,7 +262,7 @@ def train_step(x_batch, y_batch):
         gradients = tape.gradient(total_loss, model.yolo_model.trainable_variables)
         opt.apply_gradients(zip(gradients, model.yolo_model.trainable_variables))
 
-for epoch in range(200+300):
+for epoch in range(first_stage_epoch+second_stage_epoch):
     if epoch < 20:
         for name in ['conv2d_93', 'conv2d_101', 'conv2d_109']:
             layer = model.yolo_model.get_layer(name)
@@ -268,12 +273,12 @@ for epoch in range(200+300):
             layer.trainable = True
 
     train_step(x_batch, y_batch)
-    total_steps += 1
-    if total_steps < warmup_steps:
-        lr = total_steps / warmup_steps * 1e-3
+    global_steps += 1
+    if global_steps < warmup_steps:
+        lr = global_steps / warmup_steps * 1e-3
     else:
         lr = 1e-6 + 0.5 * (1e-3 - 1e-6) * (
-            (1 + np.cos((total_steps - warmup_steps) / (total_steps - warmup_steps) * np.pi))
+            (1 + np.cos((global_steps - warmup_steps) / (total_steps - warmup_steps) * np.pi))
         )
     opt.lr.assign(lr)
     print(f'epoch: {epoch} lr: ', lr)
