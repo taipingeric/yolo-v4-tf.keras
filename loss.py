@@ -227,7 +227,7 @@ def decode_train2(conv_output, output_size, NUM_CLASS, STRIDES, ANCHORS, XYSCALE
 
 losses = [yolo_loss_wrapper(input_shape=(416, 416), 
                   STRIDES=[8, 16, 32][i], 
-                  NUM_CLASS=80, 
+                  NUM_CLASS=3,
                   ANCHORS=anchors.reshape(3, 3, 2)[i], 
                   XYSCALES=[1., 1., 1.][i], 
                   IOU_LOSS_THRESH=0.5) for i in range(3)]
