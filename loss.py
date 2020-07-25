@@ -25,13 +25,14 @@ with open('../dataset/train_txt/anno.txt') as f:
 
 
 FOLDER_PATH = '..'
+BS = 32
 anchors = np.array([12, 16, 19, 36, 40, 28, 36, 75, 76, 55, 72, 146, 142, 110, 192, 243, 459, 401]).reshape((-1, 2))
 
 
 # In[6]:
 
 
-data_gen = DataGenerator(lines[:1], 1, (416, 416), num_classes=3, folder_path=FOLDER_PATH, anchors=anchors)
+data_gen = DataGenerator(lines[:1], BS, (416, 416), num_classes=3, folder_path=FOLDER_PATH, anchors=anchors)
 
 
 
@@ -234,8 +235,8 @@ losses = [yolo_loss_wrapper(input_shape=(416, 416),
 
 
 # # In[31]:
-opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
-steps_per_epoch = len(lines) // 32
+opt = tf.keras.optimizers.Adam()
+steps_per_epoch = len(lines) // BS
 warmup_epochs = 2
 warmup_steps = warmup_epochs * steps_per_epoch
 global_steps = 0
