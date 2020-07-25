@@ -713,7 +713,7 @@ for epoch in range(20+30):
         lr = 1e-6 + 0.5 * (1e-3 - 1e-6) * (
             (1 + np.cos((total_steps - warmup_steps) / (total_steps - warmup_steps) * np.pi))
         )
-    opt.lr.assign(lr.numpy())
+    opt.lr.assign(lr)
 
 for step in range(10000):
     with tf.GradientTape() as tape:
