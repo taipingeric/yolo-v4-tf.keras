@@ -673,6 +673,48 @@ losses = [yolo_loss_wrapper(input_shape=(416, 416),
 
 # # In[31]:
 opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
+warmup_epochs = 2
+warmup_steps = 2 * 1
+total_steps = 1
+
+def train_step(x_batch, y_batch):
+    with tf.GradientTape() as tape:
+        predict = model.yolo_model(x_batch)
+        total_giou_loss = 0
+        total_conf_loss = 0
+        total_prob_loss = 0
+        # giou_loss + conf_loss + prob_loss
+        for i in range(3):
+            loss_func = losses[i]
+            giou_loss, conf_loss, prob_loss = loss_func(y_batch[i], predict[i])
+            total_giou_loss += giou_loss
+            total_conf_loss += conf_loss
+            total_prob_loss += prob_loss
+            print(i, total_giou_loss, total_conf_loss, total_prob_loss)
+        total_loss = total_giou_loss + total_conf_loss + total_prob_loss
+        gradients = tape.gradient(total_loss, model.yolo_model.trainable_variables)
+        opt.apply_gradients(zip(gradients, model.yolo_model.trainable_variables))
+
+for epoch in range(20+30):
+    if epoch < 20:
+        for name in ['conv2d_93', 'conv2d_101', 'conv2d_109']:
+            layer = model.yolo_model.get_layer(name)
+            layer.trainable = False
+    elif epoch >= 20:
+        for name in ['conv2d_93', 'conv2d_101', 'conv2d_109']:
+            layer = model.yolo_model.get_layer(name)
+            layer.trainable = True
+
+    train_step(x_batch, y_batch)
+
+    if total_steps < warmup_steps:
+        lr = total_steps / warmup_steps * 1e-3
+    else:
+        lr = 1e-6 + 0.5 * (1e-3 - 1e-6) * (
+            (1 + np.cos((total_steps - warmup_steps) / (total_steps - warmup_steps) * np.pi))
+        )
+    opt.lr.assign(lr.numpy())
+
 for step in range(10000):
     with tf.GradientTape() as tape:
         predict = model.yolo_model(x_batch)
