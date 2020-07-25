@@ -237,7 +237,7 @@ losses = [yolo_loss_wrapper(input_shape=(416, 416),
 opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
 warmup_epochs = 2
 warmup_steps = 2 * 1
-total_steps = 1
+total_steps = 0
 
 def train_step(x_batch, y_batch):
     with tf.GradientTape() as tape:
@@ -268,7 +268,7 @@ for epoch in range(20+30):
             layer.trainable = True
 
     train_step(x_batch, y_batch)
-
+    total_steps += 1
     if total_steps < warmup_steps:
         lr = total_steps / warmup_steps * 1e-3
     else:
