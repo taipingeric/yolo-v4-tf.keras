@@ -561,6 +561,7 @@ def bbox_iou(boxes1, boxes2):
     iou       = tf.maximum(1.0 * inter_area / union_area, np.finfo(np.float32).eps)
 
     return iou
+
 def yolo_loss_wrapper(input_shape, STRIDES, NUM_CLASS, ANCHORS, XYSCALES, IOU_LOSS_THRESH):
     input_shape = input_shape[0]
     def yolo_loss(y_true, y_pred):
