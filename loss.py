@@ -32,7 +32,7 @@ anchors = np.array([12, 16, 19, 36, 40, 28, 36, 75, 76, 55, 72, 146, 142, 110, 1
 # In[6]:
 
 
-data_gen = DataGenerator(lines[:1], BS, (416, 416), num_classes=3, folder_path=FOLDER_PATH, anchors=anchors)
+data_gen = DataGenerator(lines[:], BS, (416, 416), num_classes=3, folder_path=FOLDER_PATH, anchors=anchors)
 
 
 
@@ -284,24 +284,24 @@ for epoch in range(first_stage_epoch+second_stage_epoch):
     opt.lr.assign(lr)
     print(f'epoch: {epoch} lr: ', lr)
 
-for step in range(10000):
-    with tf.GradientTape() as tape:
-        predict = model.yolo_model(x_batch)
-        total_loss = 0
-        total_giou_loss = 0
-        total_conf_loss = 0
-        total_prob_loss = 0
-        # giou_loss + conf_loss + prob_loss
-        for i in range(3):
-            loss_func = losses[i]
-            giou_loss, conf_loss, prob_loss = loss_func(y_batch[i], predict[i])
-            total_giou_loss += giou_loss
-            total_conf_loss += conf_loss
-            total_prob_loss += prob_loss
-            print(i, total_giou_loss, total_conf_loss, total_prob_loss)
-        total_loss = total_giou_loss + total_conf_loss + total_prob_loss
-        gradients = tape.gradient(total_loss, model.yolo_model.trainable_variables)
-        opt.apply_gradients(zip(gradients, model.yolo_model.trainable_variables))
+# for step in range(10000):
+#     with tf.GradientTape() as tape:
+#         predict = model.yolo_model(x_batch)
+#         total_loss = 0
+#         total_giou_loss = 0
+#         total_conf_loss = 0
+#         total_prob_loss = 0
+#         # giou_loss + conf_loss + prob_loss
+#         for i in range(3):
+#             loss_func = losses[i]
+#             giou_loss, conf_loss, prob_loss = loss_func(y_batch[i], predict[i])
+#             total_giou_loss += giou_loss
+#             total_conf_loss += conf_loss
+#             total_prob_loss += prob_loss
+#             print(i, total_giou_loss, total_conf_loss, total_prob_loss)
+#         total_loss = total_giou_loss + total_conf_loss + total_prob_loss
+#         gradients = tape.gradient(total_loss, model.yolo_model.trainable_variables)
+#         opt.apply_gradients(zip(gradients, model.yolo_model.trainable_variables))
 
 
 # model.yolo_model.compile(tf.keras.optimizers.Adam(),
