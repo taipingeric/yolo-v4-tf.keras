@@ -235,7 +235,7 @@ losses = [yolo_loss_wrapper(input_shape=(416, 416),
 
 # # In[31]:
 opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
-warmup_epochs = 2
+warmup_epochs = 20
 warmup_steps = 2 * 1
 total_steps = 0
 
@@ -257,7 +257,7 @@ def train_step(x_batch, y_batch):
         gradients = tape.gradient(total_loss, model.yolo_model.trainable_variables)
         opt.apply_gradients(zip(gradients, model.yolo_model.trainable_variables))
 
-for epoch in range(20+30):
+for epoch in range(200+300):
     if epoch < 20:
         for name in ['conv2d_93', 'conv2d_101', 'conv2d_109']:
             layer = model.yolo_model.get_layer(name)
