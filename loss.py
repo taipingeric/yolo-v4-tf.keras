@@ -31,13 +31,13 @@ anchors = np.array([12, 16, 19, 36, 40, 28, 36, 75, 76, 55, 72, 146, 142, 110, 1
 # In[6]:
 
 
-data_gen = DataGenerator(lines[:1], 1, (416, 416), num_classes=80, folder_path=FOLDER_PATH, anchors=anchors)
+data_gen = DataGenerator(lines[:1], 1, (416, 416), num_classes=3, folder_path=FOLDER_PATH, anchors=anchors)
 
 
 
 model = Yolov4(
                 weight_path=None,
-                # class_name_path='bccd_classes.txt'
+                class_name_path='bccd_classes.txt'
 #               weight_path='yolov4.weights',
 
 #                img_size=(416, 416, 3),
@@ -222,7 +222,7 @@ def decode_train2(conv_output, output_size, NUM_CLASS, STRIDES, ANCHORS, XYSCALE
 
     return tf.concat([pred_xywh, pred_conf, pred_prob], axis=-1)
 
-x_batch, y_batch = X, y = data_gen.__getitem__(0)
+# x_batch, y_batch = X, y = data_gen.__getitem__(0)
 
 
 losses = [yolo_loss_wrapper(input_shape=(416, 416), 
@@ -271,8 +271,8 @@ for epoch in range(first_stage_epoch+second_stage_epoch):
         for name in ['conv2d_93', 'conv2d_101', 'conv2d_109']:
             layer = model.yolo_model.get_layer(name)
             layer.trainable = True
-
-    train_step(x_batch, y_batch)
+    for x_batch, y_batch in data_gen:
+        train_step(x_batch, y_batch)
     global_steps += 1
     if global_steps < warmup_steps:
         lr = global_steps / warmup_steps * 1e-3
