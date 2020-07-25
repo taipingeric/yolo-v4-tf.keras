@@ -25,7 +25,7 @@ print(tf.__version__)
 # In[3]:
 
 
-with open('../dataset/train_txt/anno.txt') as f:
+with open('../dataset/train_txt2/anno.txt') as f:
     lines = f.readlines()
 
 
@@ -45,7 +45,7 @@ lines[0]
 # In[6]:
 
 
-data_gen = DataGenerator(lines[:1], 1, (416, 416), num_classes=3, folder_path=FOLDER_PATH, anchors=anchors)
+data_gen = DataGenerator(lines[:1], 1, (416, 416), num_classes=80, folder_path=FOLDER_PATH, anchors=anchors)
 
 
 # In[7]:
@@ -226,7 +226,7 @@ plt.imshow(raw) # 260 177 491 376
 
 model = Yolov4(
                 weight_path=None,
-                class_name_path='bccd_classes.txt'
+                # class_name_path='bccd_classes.txt'
 #               weight_path='yolov4.weights',
 
 #                img_size=(416, 416, 3),
@@ -701,7 +701,7 @@ losses = [yolo_loss_wrapper(input_shape=(416, 416),
 
 
 # # In[31]:
-opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
+opt = tf.keras.optimizers.Adam(learning_rate=1e-3)
 for i in range(10000):
     with tf.GradientTape() as tape:
         predict = model.yolo_model(x_batch)
