@@ -681,7 +681,7 @@ for i in range(10000):
         total_conf_loss = 0
         total_prob_loss = 0
         # giou_loss + conf_loss + prob_loss
-        for i in range(2, 3):
+        for i in range(3):
             loss_func = losses[i]
             giou_loss, conf_loss, prob_loss = loss_func(y_batch[i], predict[i])
             total_giou_loss += giou_loss
