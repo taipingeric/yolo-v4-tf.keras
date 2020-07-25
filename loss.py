@@ -77,7 +77,7 @@ def bbox_giou(bboxes1, bboxes2):
     inter_area = inter_section[..., 0] * inter_section[..., 1]
 
     union_area = bboxes1_area + bboxes2_area - inter_area
-    iou = tf.math.divide_no_nan(inter_area / union_area)
+    iou = tf.math.divide_no_nan(inter_area, union_area)
     # iou = tf.maximum(1.0 * inter_area / union_area, np.finfo(np.float32).eps)  #tf.math.divide_no_nan(inter_area, union_area)
 
     enclose_left_up = tf.minimum(bboxes1_coor[..., :2], bboxes2_coor[..., :2])
@@ -144,7 +144,7 @@ def bbox_iou(boxes1, boxes2):
     inter_section = tf.maximum(right_down - left_up, 0.0)
     inter_area = inter_section[..., 0] * inter_section[..., 1]
     union_area = boxes1_area + boxes2_area - inter_area
-    iou = tf.math.divide_no_nan(inter_area / union_area)
+    iou = tf.math.divide_no_nan(inter_area, union_area)
     # iou       = tf.maximum(1.0 * inter_area / union_area, np.finfo(np.float32).eps)
 
     return iou
