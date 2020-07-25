@@ -17,7 +17,7 @@ print(tf.__version__)
 # In[3]:
 
 
-with open('../dataset/train_txt2/anno.txt') as f:
+with open('../dataset/train_txt/anno.txt') as f:
     lines = f.readlines()
 
 
@@ -235,12 +235,12 @@ losses = [yolo_loss_wrapper(input_shape=(416, 416),
 
 # # In[31]:
 opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
-warmup_epochs = 20
-steps_per_epoch = 1
+steps_per_epoch = len(lines) // 32
+warmup_epochs = 2
 warmup_steps = warmup_epochs * steps_per_epoch
 global_steps = 0
-first_stage_epoch = 200
-second_stage_epoch = 300
+first_stage_epoch = 20
+second_stage_epoch = 30
 total_steps = (first_stage_epoch + second_stage_epoch) * steps_per_epoch
 
 
