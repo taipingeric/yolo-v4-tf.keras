@@ -467,20 +467,8 @@ def bbox_giou(bboxes1, bboxes2):
     bboxes1_area = bboxes1[..., 2] * bboxes1[..., 3]
     bboxes2_area = bboxes2[..., 2] * bboxes2[..., 3]
 
-    bboxes1_coor = tf.concat(
-        [
-            bboxes1[..., :2] - bboxes1[..., 2:] * 0.5,
-            bboxes1[..., :2] + bboxes1[..., 2:] * 0.5,
-        ],
-        axis=-1,
-    )
-    bboxes2_coor = tf.concat(
-        [
-            bboxes2[..., :2] - bboxes2[..., 2:] * 0.5,
-            bboxes2[..., :2] + bboxes2[..., 2:] * 0.5,
-        ],
-        axis=-1,
-    )
+    bboxes1_coor = tf.concat([bboxes1[..., :2] - bboxes1[..., 2:] * 0.5, bboxes1[..., :2] + bboxes1[..., 2:] * 0.5], axis=-1, )
+    bboxes2_coor = tf.concat([bboxes2[..., :2] - bboxes2[..., 2:] * 0.5, bboxes2[..., :2] + bboxes2[..., 2:] * 0.5], axis=-1, )
 
     left_up = tf.maximum(bboxes1_coor[..., :2], bboxes2_coor[..., :2])
     right_down = tf.minimum(bboxes1_coor[..., 2:], bboxes2_coor[..., 2:])
@@ -490,7 +478,7 @@ def bbox_giou(bboxes1, bboxes2):
 
     union_area = bboxes1_area + bboxes2_area - inter_area
 
-    iou = tf.math.divide_no_nan(inter_area, union_area)
+    iou = tf.maximum(1.0 * inter_area / union_area, np.finfo(np.float32).eps)  #tf.math.divide_no_nan(inter_area, union_area)
 
     enclose_left_up = tf.minimum(bboxes1_coor[..., :2], bboxes2_coor[..., :2])
     enclose_right_down = tf.maximum(
@@ -547,10 +535,8 @@ def bbox_iou(boxes1, boxes2):
     boxes1_area = boxes1[..., 2] * boxes1[..., 3]
     boxes2_area = boxes2[..., 2] * boxes2[..., 3]
 
-    boxes1_coor = tf.concat([boxes1[..., :2] - boxes1[..., 2:] * 0.5,
-                             boxes1[..., :2] + boxes1[..., 2:] * 0.5], axis=-1)
-    boxes2_coor = tf.concat([boxes2[..., :2] - boxes2[..., 2:] * 0.5,
-                             boxes2[..., :2] + boxes2[..., 2:] * 0.5], axis=-1)
+    boxes1_coor = tf.concat([boxes1[..., :2] - boxes1[..., 2:] * 0.5, boxes1[..., :2] + boxes1[..., 2:] * 0.5], axis=-1)
+    boxes2_coor = tf.concat([boxes2[..., :2] - boxes2[..., 2:] * 0.5, boxes2[..., :2] + boxes2[..., 2:] * 0.5], axis=-1)
 
     left_up    = tf.maximum(boxes1_coor[..., :2], boxes2_coor[..., :2])
     right_down = tf.minimum(boxes1_coor[..., 2:], boxes2_coor[..., 2:])
@@ -565,34 +551,19 @@ def bbox_iou(boxes1, boxes2):
 def yolo_loss_wrapper(input_shape, STRIDES, NUM_CLASS, ANCHORS, XYSCALES, IOU_LOSS_THRESH):
     input_shape = input_shape[0]
     def yolo_loss(y_true, y_pred):
-#         num_stages = 3 # len(y_true)
-#         input_shape = input_shape[0]
-        # conv_shape = tf.shape(conv)
         bboxes_tensor = decode_train2(y_pred, input_shape // STRIDES, NUM_CLASS, STRIDES, ANCHORS, XYSCALES)
-        raw_convs = y_pred
 
-        total_loss = 0
-#         for stage in range(num_stages):
         label = y_true
         bboxes = bboxes_tensor
-        batch_size = tf.shape(label)[0]
         grid_size = tf.shape(label)[1]
         output_size = grid_size
         input_size = STRIDES * output_size
-        conv = raw_convs
-        # pred = conv
-        # pred = tf.sigmoid(pred)
 
-        conv = tf.reshape(conv, (batch_size, output_size, output_size, 3, 5 + NUM_CLASS))
-        # conv_raw_conf = conv[:, :, :, :, 4:5]
-        # conv_raw_prob = conv[:, :, :, :, 5:]
         conv_raw_conf = bboxes[..., 4:5]
         conv_raw_prob = bboxes[..., 5:]
 
         pred_xywh = bboxes[:, :, :, :, 0:4]  # abs xy wh
         pred_conf = bboxes[:, :, :, :, 4:5]
-        # pred_xywh = pred[:, :, :, :, 0:4]  # abs xy wh
-        # pred_conf = pred[:, :, :, :, 4:5]
 
         label_xywh = label[:, :, :, :, 0:4]
         respond_bbox = label[:, :, :, :, 4:5]
@@ -616,12 +587,12 @@ def yolo_loss_wrapper(input_shape, STRIDES, NUM_CLASS, ANCHORS, XYSCALES, IOU_LO
         conf_focal = tf.pow(respond_bbox - pred_conf, 2)
 
         conf_loss = conf_focal * (
-                respond_bbox * tf.nn.sigmoid_cross_entropy_with_logits(labels=respond_bbox, logits=conv_raw_conf)
+                respond_bbox * tf.expand_dims(tf.keras.losses.binary_crossentropy(respond_bbox, pred_conf), axis=-1)  # tf.nn.sigmoid_cross_entropy_with_logits(labels=respond_bbox, logits=conv_raw_conf)
                 +
-                respond_bgd * tf.nn.sigmoid_cross_entropy_with_logits(labels=respond_bbox, logits=conv_raw_conf)
+                respond_bgd * tf.expand_dims(tf.keras.losses.binary_crossentropy(respond_bbox, pred_conf), axis=-1)  #  tf.nn.sigmoid_cross_entropy_with_logits(labels=respond_bbox, logits=conv_raw_conf)
         )
 
-        prob_loss = respond_bbox * tf.nn.sigmoid_cross_entropy_with_logits(labels=label_prob, logits=conv_raw_prob)
+        prob_loss = respond_bbox * tf.expand_dims(tf.keras.losses.categorical_crossentropy(label_prob, tf.nn.softmax(conv_raw_prob)), axis=-1)  #  tf.nn.sigmoid_cross_entropy_with_logits(labels=label_prob, logits=conv_raw_prob)
 
         giou_loss = tf.reduce_mean(tf.reduce_sum(giou_loss, axis=[1, 2, 3, 4]))
         conf_loss = tf.reduce_mean(tf.reduce_sum(conf_loss, axis=[1, 2, 3, 4]))
@@ -710,7 +681,7 @@ for i in range(10000):
         total_conf_loss = 0
         total_prob_loss = 0
         # giou_loss + conf_loss + prob_loss
-        for i in range(3):
+        for i in range(2, 3):
             loss_func = losses[i]
             giou_loss, conf_loss, prob_loss = loss_func(y_batch[i], predict[i])
             total_giou_loss += giou_loss
