@@ -687,10 +687,11 @@ for i in range(10000):
             total_giou_loss += giou_loss
             total_conf_loss += conf_loss
             total_prob_loss += prob_loss
-            total_loss = total_giou_loss + total_conf_loss + total_prob_loss
+            print(i, total_giou_loss, total_conf_loss, total_prob_loss)
+        total_loss = total_giou_loss + total_conf_loss + total_prob_loss
         gradients = tape.gradient(total_loss, model.yolo_model.trainable_variables)
         opt.apply_gradients(zip(gradients, model.yolo_model.trainable_variables))
-        print(total_giou_loss, total_conf_loss, total_prob_loss, total_loss)
+
 
 # model.yolo_model.compile(tf.keras.optimizers.Adam(),
 #                          # loss= lo
