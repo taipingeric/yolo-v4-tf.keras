@@ -236,7 +236,7 @@ losses = [yolo_loss_wrapper(input_shape=(416, 416),
 
 
 # # In[31]:
-INIT_LR = 1e-4
+INIT_LR = 1e-5
 FINAL_LR = 1e-8
 opt = tf.keras.optimizers.Adam(lr=INIT_LR)
 steps_per_epoch = len(lines) // BS
