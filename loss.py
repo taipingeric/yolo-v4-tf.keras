@@ -283,13 +283,17 @@ for epoch in range(first_stage_epoch+second_stage_epoch):
         #     layer.trainable = True
     for x_batch, y_batch in data_gen:
         train_step(x_batch, y_batch)
-    global_steps += 1
-    if global_steps < warmup_steps:
-        lr = global_steps / warmup_steps * INIT_LR
+    if epoch < first_stage_epoch:
+        lr = INIT_LR
     else:
-        lr = FINAL_LR + 0.5 * (INIT_LR - FINAL_LR) * (
-            (1 + np.cos((global_steps - warmup_steps) / (total_steps - warmup_steps) * np.pi))
-        )
+        lr = FINAL_LR
+    # global_steps += 1
+    # if global_steps < warmup_steps:
+    #     lr = global_steps / warmup_steps * INIT_LR
+    # else:
+    #     lr = FINAL_LR + 0.5 * (INIT_LR - FINAL_LR) * (
+    #         (1 + np.cos((global_steps - warmup_steps) / (total_steps - warmup_steps) * np.pi))
+    #     )
     opt.lr.assign(lr)
     print(f'epoch: {epoch} lr: ', lr)
 
