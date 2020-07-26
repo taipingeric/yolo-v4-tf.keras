@@ -17,7 +17,7 @@ print(tf.__version__)
 # In[3]:
 
 
-with open('../dataset/train_txt/anno.txt') as f:
+with open('../dataset/train_txt2/anno.txt') as f:
     lines = f.readlines()
 
 
@@ -25,20 +25,20 @@ with open('../dataset/train_txt/anno.txt') as f:
 
 
 FOLDER_PATH = '..'
-BS = 32
+BS = 1
 anchors = np.array([12, 16, 19, 36, 40, 28, 36, 75, 76, 55, 72, 146, 142, 110, 192, 243, 459, 401]).reshape((-1, 2))
 
 
 # In[6]:
 
 
-data_gen = DataGenerator(lines[:], BS, (416, 416), num_classes=3, folder_path=FOLDER_PATH, anchors=anchors)
+data_gen = DataGenerator(lines[:], BS, (416, 416), num_classes=80, folder_path=FOLDER_PATH, anchors=anchors)
 
 
 
 model = Yolov4(
                 weight_path=None,
-                class_name_path='bccd_classes.txt'
+                # class_name_path='bccd_classes.txt'
 #               weight_path='yolov4.weights',
 
 #                img_size=(416, 416, 3),
@@ -229,7 +229,7 @@ def decode_train2(conv_output, output_size, NUM_CLASS, STRIDES, ANCHORS, XYSCALE
 
 losses = [yolo_loss_wrapper(input_shape=(416, 416), 
                   STRIDES=[8, 16, 32][i], 
-                  NUM_CLASS=3,
+                  NUM_CLASS=80,
                   ANCHORS=anchors.reshape(3, 3, 2)[i], 
                   XYSCALES=[1., 1., 1.][i], 
                   IOU_LOSS_THRESH=0.5) for i in range(3)]
@@ -256,7 +256,7 @@ def train_step(x_batch, y_batch):
         for i in range(3):
             loss_func = losses[i]
             giou_loss, conf_loss, prob_loss = loss_func(y_batch[i], predict[i])
-            total_giou_loss += giou_loss
+            total_giou_loss += 0 #giou_loss
             total_conf_loss += conf_loss
             total_prob_loss += prob_loss
             print(i, total_giou_loss, total_conf_loss, total_prob_loss)
