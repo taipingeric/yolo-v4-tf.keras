@@ -277,7 +277,7 @@ for epoch in range(first_stage_epoch+second_stage_epoch):
             layer.trainable = True
     elif epoch >= 20:
         for l in model.yolo_model.layers:
-            l.trainable = False
+            l.trainable = True
         # for name in ['conv2d_93', 'conv2d_101', 'conv2d_109']:
         #     layer = model.yolo_model.get_layer(name)
         #     layer.trainable = True
