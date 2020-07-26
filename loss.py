@@ -186,14 +186,15 @@ def yolo_loss_wrapper(input_shape, STRIDES, NUM_CLASS, ANCHORS, XYSCALES, IOU_LO
         respond_bgd = (1.0 - respond_bbox) * tf.cast(max_iou < IOU_LOSS_THRESH, tf.float32)
 
         conf_focal = tf.pow(respond_bbox - pred_conf, 2)
+        conf_focal = 1.
 
         conf_loss = conf_focal * (
-                respond_bbox * tf.expand_dims(tf.keras.losses.binary_crossentropy(respond_bbox, pred_conf), axis=-1)  # tf.nn.sigmoid_cross_entropy_with_logits(labels=respond_bbox, logits=conv_raw_conf)
+                respond_bbox * tf.keras.losses.binary_crossentropy(respond_bbox, pred_conf)[..., tf.newaxis]  # tf.nn.sigmoid_cross_entropy_with_logits(labels=respond_bbox, logits=conv_raw_conf)
                 +
-                respond_bgd * tf.expand_dims(tf.keras.losses.binary_crossentropy(respond_bbox, pred_conf), axis=-1)  #  tf.nn.sigmoid_cross_entropy_with_logits(labels=respond_bbox, logits=conv_raw_conf)
+                respond_bgd * tf.keras.losses.binary_crossentropy(respond_bbox, pred_conf)[..., tf.newaxis]  #  tf.nn.sigmoid_cross_entropy_with_logits(labels=respond_bbox, logits=conv_raw_conf)
         )
 
-        prob_loss = respond_bbox * tf.expand_dims(tf.keras.losses.categorical_crossentropy(label_prob, tf.nn.softmax(conv_raw_prob)), axis=-1)  #  tf.nn.sigmoid_cross_entropy_with_logits(labels=label_prob, logits=conv_raw_prob)
+        prob_loss = respond_bbox * tf.keras.losses.categorical_crossentropy(label_prob, tf.nn.softmax(conv_raw_prob))[..., tf.newaxis]  #  tf.nn.sigmoid_cross_entropy_with_logits(labels=label_prob, logits=conv_raw_prob)
 
         giou_loss = tf.reduce_mean(tf.reduce_sum(giou_loss, axis=[1, 2, 3, 4]))
         conf_loss = tf.reduce_mean(tf.reduce_sum(conf_loss, axis=[1, 2, 3, 4]))
