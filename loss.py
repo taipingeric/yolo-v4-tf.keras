@@ -240,11 +240,11 @@ INIT_LR = 1e-4
 FINAL_LR = 1e-8
 opt = tf.keras.optimizers.Adam(lr=INIT_LR)
 steps_per_epoch = len(lines) // BS
-warmup_epochs = 2
+warmup_epochs = 20
 warmup_steps = warmup_epochs * steps_per_epoch
 global_steps = 0
-first_stage_epoch = 20
-second_stage_epoch = 30
+first_stage_epoch = 200
+second_stage_epoch = 300
 total_steps = (first_stage_epoch + second_stage_epoch) * steps_per_epoch
 
 
@@ -259,7 +259,7 @@ def train_step(x_batch, y_batch):
         for i in range(3):
             loss_func = losses[i]
             giou_loss, conf_loss, prob_loss = loss_func(y_batch[i], predict[i])
-            total_giou_loss += 0 #giou_loss
+            total_giou_loss += giou_loss
             total_conf_loss += conf_loss
             total_prob_loss += prob_loss
             print(i, total_giou_loss, total_conf_loss, total_prob_loss)
