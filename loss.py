@@ -236,7 +236,9 @@ losses = [yolo_loss_wrapper(input_shape=(416, 416),
 
 
 # # In[31]:
-opt = tf.keras.optimizers.Adam()
+INIT_LR = 1e-4
+FINAL_LR = 1e-8
+opt = tf.keras.optimizers.Adam(lr=INIT_LR)
 steps_per_epoch = len(lines) // BS
 warmup_epochs = 2
 warmup_steps = warmup_epochs * steps_per_epoch
@@ -244,6 +246,7 @@ global_steps = 0
 first_stage_epoch = 20
 second_stage_epoch = 30
 total_steps = (first_stage_epoch + second_stage_epoch) * steps_per_epoch
+
 
 
 def train_step(x_batch, y_batch):
@@ -277,9 +280,9 @@ for epoch in range(first_stage_epoch+second_stage_epoch):
         train_step(x_batch, y_batch)
     global_steps += 1
     if global_steps < warmup_steps:
-        lr = global_steps / warmup_steps * 1e-3
+        lr = global_steps / warmup_steps * INIT_LR
     else:
-        lr = 1e-6 + 0.5 * (1e-3 - 1e-6) * (
+        lr = FINAL_LR + 0.5 * (INIT_LR - FINAL_LR) * (
             (1 + np.cos((global_steps - warmup_steps) / (total_steps - warmup_steps) * np.pi))
         )
     opt.lr.assign(lr)
