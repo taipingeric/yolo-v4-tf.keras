@@ -128,6 +128,7 @@ def cspdarknet53(input):
     x = csp_block(x, residual_out=512, repeat=4)
 
     x = conv(x, 1024, 1, activation="mish")
+
     x = conv(x, 512, 1)
     x = conv(x, 1024, 3)
     x = conv(x, 512, 1)
@@ -245,7 +246,6 @@ class Yolov4(object):
         input_layer = layers.Input(self.img_size)
         yolov4_output = yolov4_neck(input_layer, self.num_classes)
         self.yolo_model = models.Model(input_layer, yolov4_output)
-
         if load_pretrained and self.weight_path and self.weight_path.endswith('.weights'):
             load_weights(self.yolo_model, self.weight_path)
 
@@ -277,6 +277,13 @@ class Yolov4(object):
                                         class_names=self.class_names)
         draw_bbox(raw_img, detections, cmap=self.class_color, random_color=random_color)
         return detections
+
+    def predict_raw(self, img_path):
+        raw_img = cv2.imread(img_path)
+        print('img shape: ', raw_img.shape)
+        img = self.preprocess_img(raw_img)
+        imgs = np.expand_dims(img, axis=0)
+        return self.yolo_model.predict(imgs)
 
 
 
