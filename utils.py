@@ -142,9 +142,9 @@ class DataGenerator(Sequence):
         lines = [self.annotation_lines[i] for i in idxs]
 
         # Generate data
-        X, y = self.__data_generation(lines)
+        X, y_tensor, y_bbox = self.__data_generation(lines)
 
-        return X, y
+        return [X, *y_tensor, y_bbox], np.zeros(len(lines))
 
     def on_epoch_end(self):
         'Updates indexes after each epoch'
@@ -159,15 +159,16 @@ class DataGenerator(Sequence):
         """
 
         X = np.empty((len(annotation_lines), *self.target_img_size, 3), dtype=np.float32)
-        y = np.empty((len(annotation_lines), self.max_boxes, 5))
+        y_bbox = np.empty((len(annotation_lines), self.max_boxes, 5), dtype=np.float32)  # x1y1x2y2
 
         for i, line in enumerate(annotation_lines):
             img_data, box_data = self.get_data(line)
             X[i] = img_data
-            y[i] = box_data
+            y_bbox[i] = box_data
 
-        y = preprocess_true_boxes(y, self.target_img_size, self.anchors, self.num_classes)
-        return X, y
+        y_tensor, y_true_boxes_xywh = preprocess_true_boxes(y_bbox, self.target_img_size, self.anchors, self.num_classes)
+
+        return X, y_tensor, y_true_boxes_xywh
 
     def get_data(self, annotation_line):
         line = annotation_line.split()
@@ -175,19 +176,21 @@ class DataGenerator(Sequence):
         img = cv2.imread(os.path.join(self.folder_path, img_path))[:, :, ::-1]
         ih, iw = img.shape[:2]
         h, w = self.target_img_size
-        box = np.array([np.array(list(map(int, box.split(',')))) for box in line[1:]])
+        boxes = np.array([np.array(list(map(float, box.split(',')))) for box in line[1:]], dtype=np.float32) # x1y1x2y2
         scale_w, scale_h = w / iw, h / ih
         img = cv2.resize(img, (w, h))
         image_data = np.array(img) / 255.
 
         # correct boxes coordinates
         box_data = np.zeros((self.max_boxes, 5))
-        if len(box) > 0:
-            np.random.shuffle(box)
-            box = box[:self.max_boxes]
-            box[:, [0, 2]] = box[:, [0, 2]] * scale_w  # + dx
-            box[:, [1, 3]] = box[:, [1, 3]] * scale_h  # + dy
-            box_data[:len(box)] = box
+        if len(boxes) > 0:
+            np.random.shuffle(boxes)
+            boxes = boxes[:self.max_boxes]
+            boxes[:, [0, 2]] = boxes[:, [0, 2]] * scale_w  # + dx
+            boxes[:, [1, 3]] = boxes[:, [1, 3]] * scale_h  # + dy
+            # boxes[:, [0, 2]] = np.clip(boxes[:, [0, 2]], 0, w)
+            # boxes[:, [1, 3]] = np.clip(boxes[:, [1, 3]], 0, h)
+            box_data[:len(boxes)] = boxes
 
         return image_data, box_data
 
@@ -231,7 +234,7 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes):
                         5+num_classes), dtype='float32')
               for s in range(num_stages)]
     # [(?, 52, 52, 3, 5+num_classes) (?, 26, 26, 3, 5+num_classes)  (?, 13, 13, 3, 5+num_classes) ]
-
+    y_true_boxes_xywh = np.concatenate((true_boxes_xy, true_boxes_wh), axis=-1)
     # Expand dim to apply broadcasting.
     anchors = np.expand_dims(anchors, 0)  # (1, 9 , 2)
     anchor_maxes = anchors / 2.  # (1, 9 , 2)
@@ -275,6 +278,14 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes):
                     y_true[stage][batch_idx, grid_row, grid_col, anchor_idx, :2] = true_boxes_xy[batch_idx, box_idx, :]  # abs xy
                     y_true[stage][batch_idx, grid_row, grid_col, anchor_idx, 2:4] = true_boxes_wh[batch_idx, box_idx, :]  # abs wh
                     y_true[stage][batch_idx, grid_row, grid_col, anchor_idx, 4] = 1  # confidence
-                    y_true[stage][batch_idx, grid_row, grid_col, anchor_idx, 5+class_idx] = 1  # one-hot encoding
 
-    return y_true
+                    y_true[stage][batch_idx, grid_row, grid_col, anchor_idx, 5+class_idx] = 1  # one-hot encoding
+                    # smooth
+                    # onehot = np.zeros(num_classes, dtype=np.float)
+                    # onehot[class_idx] = 1.0
+                    # uniform_distribution = np.full(num_classes, 1.0 / num_classes)
+                    # delta = 0.01
+                    # smooth_onehot = onehot * (1 - delta) + delta * uniform_distribution
+                    # y_true[stage][batch_idx, grid_row, grid_col, anchor_idx, 5:] = smooth_onehot
+
+    return y_true, y_true_boxes_xywh
