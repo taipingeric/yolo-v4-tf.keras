@@ -3,4 +3,4 @@ yolov4.weights
 __pycache__/
 *.h5
 .ipynb_checkpoints
-dataset/train_img
+*.
