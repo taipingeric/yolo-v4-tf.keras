@@ -97,7 +97,7 @@ def draw_bbox(img, detections, cmap, random_color=True, plot_img=True):
         cv2.rectangle(img, (x1 - 1, y1 - text_height - 5), (x1 + text_width, y1 - 2), color, cv2.FILLED)
         cv2.putText(img, text, (x1, y1 - text_height // 2), font, font_scale, (255, 255, 255), 1, cv2.LINE_AA)
     if plot_img:
-        plt.figure(figsize=(20, 20))
+        plt.figure(figsize=(5, 5))
         plt.imshow(img)
         plt.show()
     return img

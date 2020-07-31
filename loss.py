@@ -148,9 +148,10 @@ def yolo_loss(args, num_classes, iou_loss_thresh, anchors):
     mbbox_ciou_loss, mbbox_conf_loss, mbbox_prob_loss = loss_layer(conv_mbbox, pred_mbbox, label_mbbox, true_bboxes, 16, num_classes, iou_loss_thresh)
     lbbox_ciou_loss, lbbox_conf_loss, lbbox_prob_loss = loss_layer(conv_lbbox, pred_lbbox, label_lbbox, true_bboxes, 32, num_classes, iou_loss_thresh)
 
-    ciou_loss = lbbox_ciou_loss + sbbox_ciou_loss + mbbox_ciou_loss
-    conf_loss = lbbox_conf_loss + sbbox_conf_loss + mbbox_conf_loss
-    prob_loss = lbbox_prob_loss + sbbox_prob_loss + mbbox_prob_loss
+    ciou_loss = (lbbox_ciou_loss + sbbox_ciou_loss + mbbox_ciou_loss) * 3.54
+    conf_loss = (lbbox_conf_loss + sbbox_conf_loss + mbbox_conf_loss) * 64.3
+    prob_loss = (lbbox_prob_loss + sbbox_prob_loss + mbbox_prob_loss) * 1
+
     # print(ciou_loss, conf_loss, prob_loss)
     return ciou_loss+conf_loss+prob_loss
     # return ciou_loss, conf_loss, prob_loss
@@ -163,6 +164,7 @@ def loss_layer(conv, pred, label, bboxes, stride, num_class, iou_loss_thresh):
     conv = tf.reshape(conv, (batch_size, output_size, output_size,
                              3, 5 + num_class))
     conv_raw_prob = conv[:, :, :, :, 5:]
+    conv_raw_conf = conv[:, :, :, :, 4:5]
 
     pred_xywh = pred[:, :, :, :, 0:4]
     pred_conf = pred[:, :, :, :, 4:5]
@@ -171,7 +173,8 @@ def loss_layer(conv, pred, label, bboxes, stride, num_class, iou_loss_thresh):
     respond_bbox = label[:, :, :, :, 4:5]
     label_prob = label[:, :, :, :, 5:]
 
-    ciou = tf.expand_dims(bbox_ciou(pred_xywh, label_xywh), axis=-1)  # (8, 13, 13, 3, 1)
+    ciou = tf.expand_dims(bbox_giou(pred_xywh, label_xywh), axis=-1)  # (8, 13, 13, 3, 1)
+    # ciou = tf.expand_dims(bbox_ciou(pred_xywh, label_xywh), axis=-1)  # (8, 13, 13, 3, 1)
     input_size = tf.cast(input_size, tf.float32)
 
     # 每个预测框xxxiou_loss的权重 = 2 - (ground truth的面积/图片面积)
@@ -200,14 +203,21 @@ def loss_layer(conv, pred, label, bboxes, stride, num_class, iou_loss_thresh):
     # respond_bgd是0代表有物体，不是反例（或者是忽略框）；  权重respond_bgd是1代表没有物体，是反例。
     # 有趣的是，模型训练时由于不断更新，对于同一张图片，两次预测的 grid_h * grid_w * 3 个预测框（对于这个分支输出）  是不同的。用的是这些预测框来与gt计算iou来确定哪些预测框是反例。
     # 而不是用固定大小（不固定位置）的先验框。
-    # respond_bgd = (1.0 - respond_bbox) * tf.cast(max_iou < iou_loss_thresh, tf.float32)
-    respond_bgd = (1.0 - respond_bbox)
+    respond_bgd = (1.0 - respond_bbox) * tf.cast(max_iou < iou_loss_thresh, tf.float32)
+    # respond_bgd = (1.0 - respond_bbox)
 
     # 二值交叉熵损失
-    pos_loss = respond_bbox * (0 - K.log(pred_conf + 1e-9))
-    neg_loss = respond_bgd  * (0 - K.log(1 - pred_conf + 1e-9))
+    conf_focal = tf.pow(respond_bbox - pred_conf, 2)
 
-    conf_loss = pos_loss + neg_loss
+    conf_loss = conf_focal * (
+            respond_bbox * tf.nn.sigmoid_cross_entropy_with_logits(labels=respond_bbox, logits=conv_raw_conf)
+            +
+            respond_bgd * tf.nn.sigmoid_cross_entropy_with_logits(labels=respond_bbox, logits=conv_raw_conf)
+    )
+    # pos_loss = respond_bbox * (0 - K.log(pred_conf + 1e-9))
+    # neg_loss = respond_bgd  * (0 - K.log(1 - pred_conf + 1e-9))
+    #
+    # conf_loss = pos_loss + neg_loss
     # 回顾respond_bgd，某个预测框和某个gt的iou超过iou_loss_thresh，不被当作是反例。在参与“预测的置信位 和 真实置信位 的 二值交叉熵”时，这个框也可能不是正例(label里没标这个框是1的话)。这个框有可能不参与置信度loss的计算。
     # 这种框一般是gt框附近的框，或者是gt框所在格子的另外两个框。它既不是正例也不是反例不参与置信度loss的计算。（论文里称之为ignore）
 

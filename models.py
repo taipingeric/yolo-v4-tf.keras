@@ -25,9 +25,10 @@ def conv(x, filters, kernel_size, downsampling=False, activation='leaky', batch_
                       strides=strides,
                       padding=padding,
                       use_bias=not batch_norm,
-                      kernel_regularizer=regularizers.l2(0.0005),
-                      kernel_initializer=initializers.RandomNormal(stddev=0.01),
-                      bias_initializer=initializers.Zeros())(x)
+                      # kernel_regularizer=regularizers.l2(0.0005),
+                      kernel_initializer=initializers.RandomNormal(mean=0.0, stddev=0.01),
+                      # bias_initializer=initializers.Zeros()
+                      )(x)
     if batch_norm:
         x = layers.BatchNormalization()(x)
     if activation == 'mish':
@@ -285,6 +286,21 @@ class Yolov4(object):
         imgs = np.expand_dims(img, axis=0)
         return self.yolo_model.predict(imgs)
 
+    def predict_nonms(self, img_path, iou_threshold=0.413, score_threshold=0.1):
+        raw_img = cv2.imread(img_path)
+        print('img shape: ', raw_img.shape)
+        img = self.preprocess_img(raw_img)
+        imgs = np.expand_dims(img, axis=0)
+        yolov4_output = self.yolo_model.predict(imgs)
+        output = yolov4_head(yolov4_output, self.num_classes, self.anchors, self.xyscale)
+        pred_output = nms(output, self.img_size, self.num_classes, iou_threshold, score_threshold)
+        pred_output = [p.numpy() for p in pred_output]
+        detections = get_detection_data(img=raw_img,
+                                        model_outputs=pred_output,
+                                        class_names=self.class_names)
+        draw_bbox(raw_img, detections, cmap=self.class_color, random_color=True)
+        return detections
+
 
 
 
@@ -329,7 +345,7 @@ def get_boxes(pred, anchors, classes, grid_size, strides, xyscale):
     # pred_box_x1y1x2y2: absolute xy value
 
 
-def nms(model_ouputs, input_shape, num_class):
+def nms(model_ouputs, input_shape, num_class, iou_threshold=0.413, score_threshold=0.3):
     """
     Apply Non-Maximum suppression
     ref: https://www.tensorflow.org/api_docs/python/tf/image/combined_non_max_suppression
@@ -353,7 +369,7 @@ def nms(model_ouputs, input_shape, num_class):
     scores = confidence * class_probabilities
     boxes = tf.expand_dims(boxes, axis=-2)
     boxes = boxes / input_shape[0]  # box normalization: relative img size
-
+    print(f'nms iou: {iou_threshold} score: {score_threshold}')
     (nmsed_boxes,      # [bs, max_detections, 4]
      nmsed_scores,     # [bs, max_detections]
      nmsed_classes,    # [bs, max_detections]
@@ -363,8 +379,8 @@ def nms(model_ouputs, input_shape, num_class):
         scores=scores,
         max_output_size_per_class=100,
         max_total_size=100,  # max_boxes: Maximum nmsed_boxes in a single img.
-        iou_threshold=0.413,  # iou_threshold: Minimum overlap that counts as a valid detection.
-        score_threshold=0.3,  # # Minimum confidence that counts as a valid detection.
+        iou_threshold=iou_threshold,  # iou_threshold: Minimum overlap that counts as a valid detection.
+        score_threshold=score_threshold,  # # Minimum confidence that counts as a valid detection.
     )
     return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
