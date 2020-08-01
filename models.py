@@ -280,6 +280,18 @@ class Yolov4(object):
         draw_bbox(raw_img, detections, cmap=self.class_color, random_color=random_color)
         return detections
 
+    def export_gt(self, annotation_path, gt_folder_path):
+        with open(annotation_path) as file:
+            for line in file:
+                line = line.split(' ')
+                filename = line[0].split(os.sep)[-1].split('.')[0]
+                objs = line[1:]
+                # export txt file
+                with open(os.path.join(gt_folder_path, filename + '.txt'), 'w') as output_file:
+                    for obj in objs:
+                        x_min, y_min, x_max, y_max, class_id = [float(o) for o in obj.strip().split(',')]
+                        output_file.write(f'{self.class_names[int(class_id)]} {x_min} {y_min} {x_max} {y_max}\n')
+
     def export_prediction(self, annotation_path, pred_folder_path, img_folder_path, bs=2):
         with open(annotation_path) as file:
             img_paths = [os.path.join(img_folder_path, line.split(' ')[0].split(os.sep)[-1]) for line in file]
