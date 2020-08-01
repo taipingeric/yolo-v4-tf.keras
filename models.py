@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
-
+import os
+from tqdm import tqdm
 import tensorflow as tf
 from tensorflow.keras import activations, layers, regularizers, initializers, models
 import tensorflow.keras.backend as K
@@ -278,6 +279,49 @@ class Yolov4(object):
                                         class_names=self.class_names)
         draw_bbox(raw_img, detections, cmap=self.class_color, random_color=random_color)
         return detections
+
+    def export_prediction(self, annotation_path, pred_folder_path, img_folder_path, bs=2):
+        with open(annotation_path) as file:
+            img_paths = [os.path.join(img_folder_path, line.split(' ')[0].split(os.sep)[-1]) for line in file]
+            # print(img_paths[:20])
+            for batch_idx in tqdm(range(0, len(img_paths), bs)):
+                # print(len(img_paths), batch_idx, batch_idx*bs, (batch_idx+1)*bs)
+                paths = img_paths[batch_idx:batch_idx+bs]
+                # print(paths)
+                # read and process img
+                imgs = np.zeros((len(paths), *self.img_size))
+                raw_img_shapes = []
+                for j, path in enumerate(paths):
+                    img = cv2.imread(path)
+                    raw_img_shapes.append(img.shape)
+                    img = self.preprocess_img(img)
+                    imgs[j] = img
+
+                # process batch output
+                b_boxes, b_scores, b_classes, b_valid_detections = self.inference_model.predict(imgs)
+                for k in range(len(paths)):
+                    num_boxes = b_valid_detections[k]
+                    raw_img_shape = raw_img_shapes[k]
+                    boxes = b_boxes[k, :num_boxes]
+                    classes = b_classes[k, :num_boxes]
+                    scores = b_scores[k, :num_boxes]
+                    # print(raw_img_shape)
+                    boxes[:, [0, 2]] = (boxes[:, [0, 2]] * raw_img_shape[1])  # w
+                    boxes[:, [1, 3]] = (boxes[:, [1, 3]] * raw_img_shape[0])  # h
+                    cls_names = [self.class_names[int(c)] for c in classes]
+                    # print(raw_img_shape, boxes.astype(int), cls_names, scores)
+
+                    img_path = paths[k]
+                    filename = img_path.split(os.sep)[-1].split('.')[0]
+                    # print(filename)
+                    output_path = os.path.join(pred_folder_path, filename+'.txt')
+                    with open(output_path, 'w') as pred_file:
+                        for box_idx in range(num_boxes):
+                            b = boxes[box_idx]
+                            pred_file.write(f'{cls_names[box_idx]} {scores[box_idx]} {b[0]} {b[1]} {b[2]} {b[3]}\n')
+
+
+
 
     def predict_raw(self, img_path):
         raw_img = cv2.imread(img_path)
