@@ -453,3 +453,12 @@ def adjust_axes(r, t, fig, axes):
     # get axis limit
     x_lim = axes.get_xlim()
     axes.set_xlim([x_lim[0], x_lim[1]*propotion])
+
+
+def read_txt_to_list(path):
+    # open txt file lines to a list
+    with open(path) as f:
+        content = f.readlines()
+    # remove whitespace characters like `\n` at the end of each line
+    content = [x.strip() for x in content]
+    return content

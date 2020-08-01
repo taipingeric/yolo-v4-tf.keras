@@ -6,9 +6,8 @@ from tqdm import tqdm
 from glob import glob
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow.keras import activations, layers, regularizers, initializers, models
-import tensorflow.keras.backend as K
-from utils import load_weights, get_detection_data, draw_bbox, voc_ap, draw_plot_func
+from tensorflow.keras import layers, initializers, models
+from utils import load_weights, get_detection_data, draw_bbox, voc_ap, draw_plot_func, read_txt_to_list
 from config import  yolo_config
 
 
@@ -337,13 +336,6 @@ class Yolov4(object):
 
 
     def eval_map(self, gt_folder_path, pred_folder_path, temp_json_folder_path, output_files_path):
-        def file_lines_to_list(path):
-            # open txt file lines to a list
-            with open(path) as f:
-                content = f.readlines()
-            # remove whitespace characters like `\n` at the end of each line
-            content = [x.strip() for x in content]
-            return content
         """Process Gt"""
         ground_truth_files_list = glob(gt_folder_path + '/*.txt')
         assert len(ground_truth_files_list) > 0, 'no ground truth file'
@@ -359,7 +351,7 @@ class Yolov4(object):
             # check if there is a correspondent detection-results file
             temp_path = os.path.join(pred_folder_path, (file_id + ".txt"))
             assert os.path.exists(temp_path), "Error. File not found: {}\n".format(temp_path)
-            lines_list = file_lines_to_list(txt_file)
+            lines_list = read_txt_to_list(txt_file)
             # create ground-truth dictionary
             bounding_boxes = []
             is_difficult = False
@@ -412,7 +404,7 @@ class Yolov4(object):
                         error_msg = "Error. File not found: {}\n".format(temp_path)
                         error_msg += "(You can avoid this error message by running extra/intersect-gt-and-dr.py)"
                         print(error_msg)
-                lines = file_lines_to_list(txt_file)
+                lines = read_txt_to_list(txt_file)
                 for line in lines:
                     try:
                         tmp_class_name, confidence, left, top, right, bottom = line.split()
@@ -435,7 +427,6 @@ class Yolov4(object):
         """
         sum_AP = 0.0
         ap_dictionary = {}
-        lamr_dictionary = {}
         # open file to store the output
         with open(output_files_path + "/output.txt", 'w') as output_file:
             output_file.write("# AP and precision/recall per class\n")
@@ -456,30 +447,6 @@ class Yolov4(object):
                 fp = [0] * nd
                 for idx, detection in enumerate(dr_data):
                     file_id = detection["file_id"]
-                    # if show_animation:
-                    #     # find ground truth image
-                    #     ground_truth_img = glob.glob1(IMG_PATH, file_id + ".*")
-                    #     # tifCounter = len(glob.glob1(myPath,"*.tif"))
-                    #     if len(ground_truth_img) == 0:
-                    #         error("Error. Image not found with id: " + file_id)
-                    #     elif len(ground_truth_img) > 1:
-                    #         error("Error. Multiple image with id: " + file_id)
-                    #     else:  # found image
-                    #         # print(IMG_PATH + "/" + ground_truth_img[0])
-                    #         # Load image
-                    #         img = cv2.imread(IMG_PATH + "/" + ground_truth_img[0])
-                    #         # load image with draws of multiple detections
-                    #         img_cumulative_path = output_files_path + "/images/" + ground_truth_img[0]
-                    #         if os.path.isfile(img_cumulative_path):
-                    #             img_cumulative = cv2.imread(img_cumulative_path)
-                    #         else:
-                    #             img_cumulative = img.copy()
-                    #         # Add bottom border to image
-                    #         bottom_border = 60
-                    #         BLACK = [0, 0, 0]
-                    #         img = cv2.copyMakeBorder(img, 0, bottom_border, 0, 0, cv2.BORDER_CONSTANT, value=BLACK)
-                    # assign detection-results to ground truth object if any
-                    # open ground-truth with that file_id
                     gt_file = temp_json_folder_path + "/" + file_id + "_ground_truth.json"
                     ground_truth_data = json.load(open(gt_file))
                     ovmax = -1
@@ -502,15 +469,7 @@ class Yolov4(object):
                                     ovmax = ov
                                     gt_match = obj
 
-                    # assign detection as true positive/don't care/false positive
-                    # if show_animation:
-                    #     status = "NO MATCH FOUND!"  # status is only used in the animation
-                    # set minimum overlap
-                    min_overlap = 0.5# MINOVERLAP
-                    # if specific_iou_flagged:
-                    #     if class_name in specific_iou_classes:
-                    #         index = specific_iou_classes.index(class_name)
-                    #         min_overlap = float(iou_list[index])
+                    min_overlap = 0.5
                     if ovmax >= min_overlap:
                         # if "difficult" not in gt_match:
                         if not bool(gt_match["used"]):
@@ -521,79 +480,13 @@ class Yolov4(object):
                             # update the ".json" file
                             with open(gt_file, 'w') as f:
                                 f.write(json.dumps(ground_truth_data))
-                            # if show_animation:
-                            #     status = "MATCH!"
                         else:
                             # false positive (multiple detection)
                             fp[idx] = 1
-                            # if show_animation:
-                            #     status = "REPEATED MATCH!"
                     else:
-                        # false positive
                         fp[idx] = 1
-                        # if ovmax > 0:
-                        #     status = "INSUFFICIENT OVERLAP"
 
-                    """
-                     Draw image to show animation
-                    """
-                    # if show_animation:
-                    #     height, widht = img.shape[:2]
-                    #     # colors (OpenCV works with BGR)
-                    #     white = (255, 255, 255)
-                    #     light_blue = (255, 200, 100)
-                    #     green = (0, 255, 0)
-                    #     light_red = (30, 30, 255)
-                    #     # 1st line
-                    #     margin = 10
-                    #     v_pos = int(height - margin - (bottom_border / 2.0))
-                    #     text = "Image: " + ground_truth_img[0] + " "
-                    #     img, line_width = draw_text_in_image(img, text, (margin, v_pos), white, 0)
-                    #     text = "Class [" + str(class_index) + "/" + str(n_classes) + "]: " + class_name + " "
-                    #     img, line_width = draw_text_in_image(img, text, (margin + line_width, v_pos), light_blue,
-                    #                                          line_width)
-                    #     if ovmax != -1:
-                    #         color = light_red
-                    #         if status == "INSUFFICIENT OVERLAP":
-                    #             text = "IoU: {0:.2f}% ".format(ovmax * 100) + "< {0:.2f}% ".format(min_overlap * 100)
-                    #         else:
-                    #             text = "IoU: {0:.2f}% ".format(ovmax * 100) + ">= {0:.2f}% ".format(min_overlap * 100)
-                    #             color = green
-                    #         img, _ = draw_text_in_image(img, text, (margin + line_width, v_pos), color, line_width)
-                    #     # 2nd line
-                    #     v_pos += int(bottom_border / 2.0)
-                    #     rank_pos = str(idx + 1)  # rank position (idx starts at 0)
-                    #     text = "Detection #rank: " + rank_pos + " confidence: {0:.2f}% ".format(
-                    #         float(detection["confidence"]) * 100)
-                    #     img, line_width = draw_text_in_image(img, text, (margin, v_pos), white, 0)
-                    #     color = light_red
-                    #     if status == "MATCH!":
-                    #         color = green
-                    #     text = "Result: " + status + " "
-                    #     img, line_width = draw_text_in_image(img, text, (margin + line_width, v_pos), color, line_width)
-                    #
-                    #     font = cv2.FONT_HERSHEY_SIMPLEX
-                    #     if ovmax > 0:  # if there is intersections between the bounding-boxes
-                    #         bbgt = [int(round(float(x))) for x in gt_match["bbox"].split()]
-                    #         cv2.rectangle(img, (bbgt[0], bbgt[1]), (bbgt[2], bbgt[3]), light_blue, 2)
-                    #         cv2.rectangle(img_cumulative, (bbgt[0], bbgt[1]), (bbgt[2], bbgt[3]), light_blue, 2)
-                    #         cv2.putText(img_cumulative, class_name, (bbgt[0], bbgt[1] - 5), font, 0.6, light_blue, 1,
-                    #                     cv2.LINE_AA)
-                    #     bb = [int(i) for i in bb]
-                    #     cv2.rectangle(img, (bb[0], bb[1]), (bb[2], bb[3]), color, 2)
-                    #     cv2.rectangle(img_cumulative, (bb[0], bb[1]), (bb[2], bb[3]), color, 2)
-                    #     cv2.putText(img_cumulative, class_name, (bb[0], bb[1] - 5), font, 0.6, color, 1, cv2.LINE_AA)
-                    #     # show image
-                    #     cv2.imshow("Animation", img)
-                    #     cv2.waitKey(20)  # show for 20 ms
-                    #     # save image to output
-                    #     output_img_path = output_files_path + "/images/detections_one_by_one/" + class_name + "_detection" + str(
-                    #         idx) + ".jpg"
-                    #     cv2.imwrite(output_img_path, img)
-                    #     # save the image with all the objects drawn to it
-                    #     cv2.imwrite(img_cumulative_path, img_cumulative)
 
-                # print(tp)
                 # compute precision/recall
                 cumsum = 0
                 for idx, val in enumerate(fp):
@@ -618,14 +511,7 @@ class Yolov4(object):
                 sum_AP += ap
                 text = "{0:.2f}%".format(
                     ap * 100) + " = " + class_name + " AP "  # class_name + " AP = {0:.2f}%".format(ap*100)
-                """
-                 Write to output.txt
-                """
-                rounded_prec = ['%.2f' % elem for elem in prec]
-                rounded_rec = ['%.2f' % elem for elem in rec]
-                output_file.write(
-                    text + "\n Precision: " + str(rounded_prec) + "\n Recall :" + str(rounded_rec) + "\n\n")
-                # if not args.quiet:
+
                 print(text)
                 ap_dictionary[class_name] = ap
 
@@ -680,7 +566,7 @@ class Yolov4(object):
         det_counter_per_class = {}
         for txt_file in dr_files_list:
             # get lines to list
-            lines_list = file_lines_to_list(txt_file)
+            lines_list = read_txt_to_list(txt_file)
             for line in lines_list:
                 class_name = line.split()[0]
                 # check if class is in the ignore list, if yes skip
@@ -719,14 +605,6 @@ class Yolov4(object):
             )
 
         """
-         Write number of ground-truth objects per class to results.txt
-        """
-        with open(output_files_path + "/output.txt", 'a') as output_file:
-            output_file.write("\n# Number of ground-truth objects per class\n")
-            for class_name in sorted(gt_counter_per_class):
-                output_file.write(class_name + ": " + str(gt_counter_per_class[class_name]) + "\n")
-
-        """
          Finish counting true positives
         """
         for class_name in dr_classes:
@@ -762,40 +640,6 @@ class Yolov4(object):
                 plot_color,
                 true_p_bar
             )
-
-        """
-         Write number of detected objects per class to output.txt
-        """
-        with open(output_files_path + "/output.txt", 'a') as output_file:
-            output_file.write("\n# Number of detected objects per class\n")
-            for class_name in sorted(dr_classes):
-                n_det = det_counter_per_class[class_name]
-                text = class_name + ": " + str(n_det)
-                text += " (tp:" + str(count_true_positives[class_name]) + ""
-                text += ", fp:" + str(n_det - count_true_positives[class_name]) + ")\n"
-                output_file.write(text)
-
-        """
-         Draw log-average miss rate plot (Show lamr of all classes in decreasing order)
-        """
-        # if True:
-        #     window_title = "lamr"
-        #     plot_title = "log-average miss rate"
-        #     x_label = "log-average miss rate"
-        #     output_path = output_files_path + "/lamr.png"
-        #     to_show = False
-        #     plot_color = 'royalblue'
-        #     draw_plot_func(
-        #         lamr_dictionary,
-        #         n_classes,
-        #         window_title,
-        #         plot_title,
-        #         x_label,
-        #         output_path,
-        #         to_show,
-        #         plot_color,
-        #         ""
-        #     )
 
         """
          Draw mAP plot (Show AP's of all classes in decreasing order)
