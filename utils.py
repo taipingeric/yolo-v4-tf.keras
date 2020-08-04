@@ -178,7 +178,7 @@ class DataGenerator(Sequence):
         img_path = line[0]
         img = cv2.imread(os.path.join(self.folder_path, img_path))[:, :, ::-1]
         ih, iw = img.shape[:2]
-        h, w = self.target_img_size
+        h, w, c = self.target_img_size
         boxes = np.array([np.array(list(map(float, box.split(',')))) for box in line[1:]], dtype=np.float32) # x1y1x2y2
         scale_w, scale_h = w / iw, h / ih
         img = cv2.resize(img, (w, h))
