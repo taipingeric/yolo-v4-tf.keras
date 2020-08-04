@@ -111,9 +111,9 @@ class DataGenerator(Sequence):
     """
     def __init__(self,
                  annotation_path,
+                 class_name_path,
                  batch_size,
                  img_size,
-                 num_classes,
                  folder_path,
                  anchors,
                  max_boxes=100,
@@ -121,10 +121,12 @@ class DataGenerator(Sequence):
         self.annotation_path = annotation_path,
         with open(annotation_path) as f:
             self.annotation_lines = f.readlines()
+        self.class_name_path = class_name_path
+        self.num_classes = len([line.strip() for line in open(class_name_path).readlines()])
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.target_img_size = img_size
-        self.num_classes = num_classes
+
         self.indexes = np.arange(len(self.annotation_lines))
         self.folder_path = folder_path
         self.anchors = anchors
