@@ -3,7 +3,7 @@ A simple tf.keras implementation of YOLO v4
 
 ## Quick Start
 
-1. Download official YOLO v4 pre-trained weights from [github AlexeyAB darknet]()
+1. Download official YOLO v4 pre-trained weights from [github AlexeyAB darknet](https://github.com/AlexeyAB/darknet#how-to-evaluate-ap-of-yolov4-on-the-ms-coco-evaluation-server)
 2. Build tf.keras model and load weights
 3. Run prediction
 
