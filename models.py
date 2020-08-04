@@ -42,19 +42,21 @@ class Yolov4(object):
         self.yolo_model = models.Model(input_layer, yolov4_output)
         if load_pretrained and self.weight_path and self.weight_path.endswith('.weights'):
             load_weights(self.yolo_model, self.weight_path)
-        if not self.training_model:
-            y_true = [
-                layers.Input(name='input_2', shape=(52, 52, 3, (self.num_classes + 5))),  # label small boxes
-                layers.Input(name='input_3', shape=(26, 26, 3, (self.num_classes + 5))),  # label medium boxes
-                layers.Input(name='input_4', shape=(13, 13, 3, (self.num_classes + 5))),  # label large boxes
-                layers.Input(name='input_5', shape=(self.max_boxes, 4)),  # true bboxes
-            ]
-            loss_list = tf.keras.layers.Lambda(yolo_loss, name='yolo_loss',
-                                               arguments={'num_classes': self.num_classes,
-                                                          'iou_loss_thresh': self.iou_loss_thresh,
-                                                          'anchors': self.anchors})([*self.yolo_model.output, *y_true])
-            self.training_model = models.Model([self.yolo_model.input, *y_true], loss_list)
 
+        # Build training model
+        y_true = [
+            layers.Input(name='input_2', shape=(52, 52, 3, (self.num_classes + 5))),  # label small boxes
+            layers.Input(name='input_3', shape=(26, 26, 3, (self.num_classes + 5))),  # label medium boxes
+            layers.Input(name='input_4', shape=(13, 13, 3, (self.num_classes + 5))),  # label large boxes
+            layers.Input(name='input_5', shape=(self.max_boxes, 4)),  # true bboxes
+        ]
+        loss_list = tf.keras.layers.Lambda(yolo_loss, name='yolo_loss',
+                                           arguments={'num_classes': self.num_classes,
+                                                      'iou_loss_thresh': self.iou_loss_thresh,
+                                                      'anchors': self.anchors})([*self.yolo_model.output, *y_true])
+        self.training_model = models.Model([self.yolo_model.input, *y_true], loss_list)
+
+        # Build inference model
         yolov4_output = yolov4_head(yolov4_output, self.num_classes, self.anchors, self.xyscale)
         # output: [boxes, scores, classes, valid_detections]
         self.inference_model = models.Model(input_layer, nms(yolov4_output, self.img_size, self.num_classes))
