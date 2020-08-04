@@ -4,6 +4,7 @@ import pandas as pd
 import operator
 import matplotlib.pyplot as plt
 import os
+from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import Sequence
 
 
@@ -78,7 +79,10 @@ def get_detection_data(img, model_outputs, class_names):
 def read_annotation_lines(annotation_path, test_size=None):
     with open(annotation_path) as f:
         lines = f.readlines()
-    return lines
+    if test_size:
+        return train_test_split(lines, test_size=test_size)
+    else:
+        return lines
 
 def draw_bbox(img, detections, cmap, random_color=True, plot_img=True):
     """
