@@ -127,7 +127,7 @@ class DataGenerator(Sequence):
 
         self.indexes = np.arange(len(self.annotation_lines))
         self.folder_path = folder_path
-        self.anchors = anchors
+        self.anchors = np.array(anchors).reshape((9, 2))
         self.max_boxes = max_boxes
         self.on_epoch_end()
 
