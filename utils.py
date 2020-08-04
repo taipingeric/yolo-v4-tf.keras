@@ -110,7 +110,7 @@ class DataGenerator(Sequence):
     ref: https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
     """
     def __init__(self,
-                 annotation_lines,
+                 annotation_path,
                  batch_size,
                  img_size,
                  num_classes,
@@ -118,7 +118,9 @@ class DataGenerator(Sequence):
                  anchors,
                  max_boxes=100,
                  shuffle=True):
-        self.annotation_lines = annotation_lines
+        self.annotation_path = annotation_path,
+        with open(annotation_path) as f:
+            self.annotation_lines = f.readlines()
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.target_img_size = img_size
