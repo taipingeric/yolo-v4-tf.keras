@@ -88,3 +88,31 @@ A simple tf.keras implementation of YOLO v4
     bus
     ...
     ```
+4. Train with the code below
+    
+    Example
+    ```python
+    from utils import DataGenerator, read_annotation_lines
+    from models import Yolov4
+    from config import yolo_config
+   
+    train_lines, val_lines = read_annotation_lines('./dataset/train_txt/anno.txt', test_size=0.1)
+    FOLDER_PATH = '.'
+    BS = 8
+    anchors = yolo_config['anchors']
+    target_img_size = yolo_config['img_size']
+    class_name_path = './coco_classes.txt'
+    data_gen_train = DataGenerator(train_lines, class_name_path, BS, target_img_size, folder_path=FOLDER_PATH, anchors=anchors)
+    data_gen_val = DataGenerator(val_lines, class_name_path, BS, target_img_size, folder_path=FOLDER_PATH, anchors=anchors)
+   
+    model = Yolov4(weight_path=None, 
+                   class_name_path=class_name_path)
+    model.build_model(load_pretrained=False)
+   
+    model.fit(data_gen_train, 
+              initial_epoch=0,
+              epochs=10000, 
+              val_data_gen=data_gen_val,
+              callbacks=[])
+ 
+    ```
