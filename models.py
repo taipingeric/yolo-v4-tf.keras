@@ -137,12 +137,11 @@ def cspdarknet53(input):
     x = conv(x, 1024, 3)
     x = conv(x, 512, 1)
 
-    x = layers.Concatenate()([
-        layers.MaxPooling2D(pool_size=13, strides=1, padding='same')(x),
-        layers.MaxPooling2D(pool_size=9, strides=1, padding='same')(x),
-        layers.MaxPooling2D(pool_size=5, strides=1, padding='same')(x),
-        x
-    ])
+    x = layers.Concatenate()([layers.MaxPooling2D(pool_size=13, strides=1, padding='same')(x),
+                              layers.MaxPooling2D(pool_size=9, strides=1, padding='same')(x),
+                              layers.MaxPooling2D(pool_size=5, strides=1, padding='same')(x),
+                              x
+                              ])
     x = conv(x, 512, 1)
     x = conv(x, 1024, 3)
     route2 = conv(x, 512, 1)
@@ -401,17 +400,16 @@ class Yolov4(object):
                 temp_path = os.path.join(gt_folder_path, (file_id + ".txt"))
                 if class_index == 0:
                     if not os.path.exists(temp_path):
-                        error_msg = "Error. File not found: {}\n".format(temp_path)
-                        error_msg += "(You can avoid this error message by running extra/intersect-gt-and-dr.py)"
+                        error_msg = f"Error. File not found: {temp_path}\n"
                         print(error_msg)
                 lines = read_txt_to_list(txt_file)
                 for line in lines:
                     try:
                         tmp_class_name, confidence, left, top, right, bottom = line.split()
                     except ValueError:
-                        error_msg = "Error: File " + txt_file + " in the wrong format.\n"
-                        error_msg += " Expected: <class_name> <confidence> <left> <top> <right> <bottom>\n"
-                        error_msg += " Received: " + line
+                        error_msg = f"""Error: File {txt_file} in the wrong format.\n 
+                                        Expected: <class_name> <confidence> <left> <top> <right> <bottom>\n 
+                                        Received: {line} \n"""
                         print(error_msg)
                     if tmp_class_name == class_name:
                         # print("match")
