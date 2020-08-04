@@ -110,7 +110,7 @@ class DataGenerator(Sequence):
     ref: https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
     """
     def __init__(self,
-                 annotation_path,
+                 annotation_lines,
                  class_name_path,
                  batch_size,
                  img_size,
@@ -118,9 +118,7 @@ class DataGenerator(Sequence):
                  anchors,
                  max_boxes=100,
                  shuffle=True):
-        self.annotation_path = annotation_path,
-        with open(annotation_path) as f:
-            self.annotation_lines = f.readlines()
+        self.annotation_lines = annotation_lines
         self.class_name_path = class_name_path
         self.num_classes = len([line.strip() for line in open(class_name_path).readlines()])
         self.batch_size = batch_size
@@ -163,7 +161,7 @@ class DataGenerator(Sequence):
         :return:
         """
 
-        X = np.empty((len(annotation_lines), *self.target_img_size, 3), dtype=np.float32)
+        X = np.empty((len(annotation_lines), *self.target_img_size), dtype=np.float32)
         y_bbox = np.empty((len(annotation_lines), self.max_boxes, 5), dtype=np.float32)  # x1y1x2y2
 
         for i, line in enumerate(annotation_lines):
@@ -171,7 +169,7 @@ class DataGenerator(Sequence):
             X[i] = img_data
             y_bbox[i] = box_data
 
-        y_tensor, y_true_boxes_xywh = preprocess_true_boxes(y_bbox, self.target_img_size, self.anchors, self.num_classes)
+        y_tensor, y_true_boxes_xywh = preprocess_true_boxes(y_bbox, self.target_img_size[:2], self.anchors, self.num_classes)
 
         return X, y_tensor, y_true_boxes_xywh
 
