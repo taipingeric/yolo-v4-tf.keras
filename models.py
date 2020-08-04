@@ -6,9 +6,10 @@ from tqdm import tqdm
 from glob import glob
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow.keras import layers, initializers, models
+from tensorflow.keras import layers, initializers, models, optimizers
 from utils import load_weights, get_detection_data, draw_bbox, voc_ap, draw_plot_func, read_txt_to_list
 from config import  yolo_config
+from loss import yolo_loss
 
 
 def conv(x, filters, kernel_size, downsampling=False, activation='leaky', batch_norm=True):
@@ -243,6 +244,9 @@ class Yolov4(object):
         self.strides = yolo_config['strides']
         self.output_sizes = [self.img_size[0] // s for s in self.strides]
         self.class_color = {name: list(np.random.random(size=3)*255) for name in self.class_names}
+        # Training
+        self.max_boxes = yolo_config['max_boxes']
+        self.iou_loss_thresh = yolo_config['iou_loss_thresh']
         assert self.num_classes > 0
 
     def build_model(self, load_pretrained=True):
@@ -268,6 +272,32 @@ class Yolov4(object):
         img = cv2.resize(img, self.img_size[:2])
         img = img / 255.
         return img
+
+    def fit(self, train_data_gen, epochs, val_data_gen=None, initial_epoch=0, callbacks=None):
+        if callbacks is None:
+            callbacks = []
+        if not self.training_model:
+            y_true = [
+                layers.Input(name='input_2', shape=(52, 52, 3, (self.num_classes + 5))),  # label small boxes
+                layers.Input(name='input_3', shape=(26, 26, 3, (self.num_classes + 5))),  # label medium boxes
+                layers.Input(name='input_4', shape=(13, 13, 3, (self.num_classes + 5))),  # label large boxes
+                layers.Input(name='input_5', shape=(self.max_boxes, 4)),  # true bboxes
+            ]
+            loss_list = tf.keras.layers.Lambda(yolo_loss, name='yolo_loss',
+                                               arguments={'num_classes': self.num_classes,
+                                                          'iou_loss_thresh': self.iou_loss_thresh,
+                                                          'anchors': self.anchors})([*self.yolo_model.output, *y_true])
+            self.training_model = models.Model([self.yolo_model.input, *y_true], loss_list)
+
+        self.training_model.compile(optimizer=optimizers.Adam(lr=1e-3),
+                                    loss={'yolo_loss': lambda y_true, y_pred: y_pred})
+        self.training_model.fit(train_data_gen,
+                                steps_per_epoch=len(train_data_gen),
+                                validation_data=val_data_gen,
+                                validation_steps=len(val_data_gen),
+                                epochs=epochs,
+                                callbacks=callbacks,
+                                initial_epoch=initial_epoch)
 
     def predict(self, img_path, random_color=True):
         raw_img = cv2.imread(img_path)
