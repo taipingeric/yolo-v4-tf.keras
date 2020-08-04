@@ -75,6 +75,10 @@ def get_detection_data(img, model_outputs, class_names):
     print(f'# of bboxes: {num_bboxes}')
     return df
 
+def read_annotation_lines(annotation_path, test_size=None):
+    with open(annotation_path) as f:
+        lines = f.readlines()
+    return lines
 
 def draw_bbox(img, detections, cmap, random_color=True, plot_img=True):
     """
