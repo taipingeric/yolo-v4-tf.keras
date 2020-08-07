@@ -1,6 +1,8 @@
 # yolo-v4-tf.keras
 A simple tf.keras implementation of YOLO v4
 
+![asset/pred.png](asset/pred.png)
+
 ## Quick Start
 
 1. Download official YOLO v4 pre-trained weights from [github AlexeyAB darknet](https://github.com/AlexeyAB/darknet#how-to-evaluate-ap-of-yolov4-on-the-ms-coco-evaluation-server)

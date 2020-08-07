@@ -84,7 +84,7 @@ def read_annotation_lines(annotation_path, test_size=None):
     else:
         return lines
 
-def draw_bbox(img, detections, cmap, random_color=True, plot_img=True):
+def draw_bbox(img, detections, cmap, random_color=True, figsize=(10, 10), show_text=True):
     """
     Draw bounding boxes on the img.
     :param img: BGR img.
@@ -98,17 +98,20 @@ def draw_bbox(img, detections, cmap, random_color=True, plot_img=True):
     for _, row in detections.iterrows():
         x1, y1, x2, y2, cls, score, w, h = row.values
         color = list(np.random.random(size=3) * 255) if random_color else cmap[cls]
-        cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
-        text = f'{cls} {score:.2f}'
-        font = cv2.FONT_HERSHEY_DUPLEX
-        font_scale = 0.4
-        (text_width, text_height) = cv2.getTextSize(text, font, fontScale=font_scale, thickness=1)[0]
-        cv2.rectangle(img, (x1 - 1, y1 - text_height - 5), (x1 + text_width, y1 - 2), color, cv2.FILLED)
-        cv2.putText(img, text, (x1, y1 - text_height // 2), font, font_scale, (255, 255, 255), 1, cv2.LINE_AA)
-    if plot_img:
-        plt.figure(figsize=(5, 5))
-        plt.imshow(img)
-        plt.show()
+        scale = max(img.shape[0:2]) / 416
+        line_width = int(2 * scale)
+        cv2.rectangle(img, (x1, y1), (x2, y2), color, line_width)
+        if show_text:
+            text = f'{cls} {score:.2f}'
+            font = cv2.FONT_HERSHEY_DUPLEX
+            font_scale = max(0.3 * scale, 0.3)
+            thickness = max(int(1 * scale), 1)
+            (text_width, text_height) = cv2.getTextSize(text, font, fontScale=font_scale, thickness=thickness)[0]
+            cv2.rectangle(img, (x1 - line_width//2, y1 - text_height), (x1 + text_width, y1), color, cv2.FILLED)
+            cv2.putText(img, text, (x1, y1), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
+    plt.figure(figsize=figsize)
+    plt.imshow(img)
+    plt.show()
     return img
 
 

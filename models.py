@@ -86,7 +86,7 @@ class Yolov4(object):
                                 callbacks=callbacks,
                                 initial_epoch=initial_epoch)
 
-    def predict(self, img_path, random_color=True):
+    def predict(self, img_path, random_color=True, plot_img=True, figsize=(10, 10), show_text=True):
         raw_img = cv2.imread(img_path)
         print('img shape: ', raw_img.shape)
         img = self.preprocess_img(raw_img)
@@ -95,7 +95,9 @@ class Yolov4(object):
         detections = get_detection_data(img=raw_img,
                                         model_outputs=pred_output,
                                         class_names=self.class_names)
-        draw_bbox(raw_img, detections, cmap=self.class_color, random_color=random_color)
+        if plot_img:
+            draw_bbox(raw_img, detections, cmap=self.class_color, random_color=random_color, figsize=figsize,
+                      show_text=show_text)
         return detections
 
     def export_gt(self, annotation_path, gt_folder_path):
