@@ -5,7 +5,6 @@ from tensorflow.keras import layers, initializers, models
 def conv(x, filters, kernel_size, downsampling=False, activation='leaky', batch_norm=True):
     def mish(x):
         return x * tf.math.tanh(tf.math.softplus(x))
-        # return layers.Lambda(lambda x: x * activations.tanh(K.softplus(x)))(x)
 
     if downsampling:
         x = layers.ZeroPadding2D(padding=((1, 0), (1, 0)))(x)  # top & left padding

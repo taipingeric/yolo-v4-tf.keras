@@ -34,6 +34,7 @@ class Yolov4(object):
         # Training
         self.max_boxes = yolo_config['max_boxes']
         self.iou_loss_thresh = yolo_config['iou_loss_thresh']
+        self.config = yolo_config
         assert self.num_classes > 0
 
     def build_model(self, load_pretrained=True):
