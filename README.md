@@ -3,6 +3,16 @@ A simple tf.keras implementation of YOLO v4
 
 ![asset/pred.png](asset/pred.png)
 
+## TODO
+
+- [X] Cosine annealing scheduler
+- [X] mAP
+- [ ] Mosai
+- [ ] DropBlock
+- [ ] Self-adversarial training (SAT)
+- [ ] Mish 
+
+
 ## Quick Start
 
 1. Download official YOLO v4 pre-trained weights from [github/AlexeyAB/darknet](https://drive.google.com/open?id=1cewMfusmPjYWbrnuJRuKhPMwRe_b9PaT)
@@ -69,6 +79,7 @@ A simple tf.keras implementation of YOLO v4
 2. Convert all XML files to a single .txt file
 
     Row format: `img_path BOX0 BOX1 BOX2 ...`
+    
     BOX format: `xmin,ymin,xmax,ymax,class_id`
     
     Example:
@@ -118,3 +129,15 @@ A simple tf.keras implementation of YOLO v4
               callbacks=[])
  
     ```
+   
+## Reference
+
+The repositories I've admired and learned a lot
+
+* [qqwweee/keras-yolo3](https://github.com/qqwweee/keras-yolo3)
+* [AlexeyAB/darknet](https://github.com/AlexeyAB/darknet)
+* [hunglc007/tensorflow-yolov4-tflite](https://github.com/hunglc007/tensorflow-yolov4-tflite)
+* [Cartucho/mAP](https://github.com/Cartucho/mAP)
+* [miemie2013/Keras-YOLOv4](https://github.com/miemie2013/Keras-YOLOv4)
+* [david8862/keras-YOLOv3-model-set](https://github.com/david8862/keras-YOLOv3-model-set)
+* [Ma-Dan/keras-yolo4](https://github.com/Ma-Dan/keras-yolo4)
