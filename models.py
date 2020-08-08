@@ -38,6 +38,7 @@ class Yolov4(object):
         assert self.num_classes > 0
 
     def build_model(self, load_pretrained=True):
+        tf.keras.backend.clear_session()
         input_layer = layers.Input(self.img_size)
         yolov4_output = yolov4_neck(input_layer, self.num_classes)
         self.yolo_model = models.Model(input_layer, yolov4_output)
