@@ -10,7 +10,9 @@ A simple tf.keras implementation of YOLO v4
 - [ ] Mosai
 - [ ] DropBlock
 - [ ] Self-adversarial training (SAT)
-- [ ] Mish 
+- [ ] Label smoothing
+- [X] Mish
+- [X] IoU, GIoU, CIoU loss 
 
 
 ## Quick Start
