@@ -7,7 +7,7 @@ A simple tf.keras implementation of YOLO v4
 
 - [X] Cosine annealing scheduler
 - [X] mAP
-- [ ] Mosai
+- [ ] Mosaic augmentation
 - [ ] DropBlock
 - [ ] Self-adversarial training (SAT)
 - [ ] Label smoothing
