@@ -2,9 +2,9 @@ import xml.etree.ElementTree as ET
 import os
 from glob import glob
 
-XML_PATH = './dataset/xml'# '/Users/SheepLi/Google 雲端硬碟/yolo-v4-tf.keras'
-CLASSES_PATH = './class_names/bccd_classes.txt' # '/Users/SheepLi/Google 雲端硬碟/yolo-v4-tf.keras/coco_classes.txt'
-TXT_PATH = './dataset/txt/anno-test.txt'# '/Users/SheepLi/Google 雲端硬碟/yolo-v4-tf.keras/dataset/train_txt/anno.txt'
+XML_PATH = './dataset/xml'
+CLASSES_PATH = './class_names/classes.txt'
+TXT_PATH = './dataset/txt/anno.txt'
 
 
 '''loads the classes'''
