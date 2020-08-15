@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import os
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import Sequence
+from config import yolo_config
 
 
 def load_weights(model, weights_file_path):
@@ -123,22 +124,18 @@ class DataGenerator(Sequence):
     def __init__(self,
                  annotation_lines,
                  class_name_path,
-                 batch_size,
-                 img_size,
                  folder_path,
-                 anchors,
                  max_boxes=100,
                  shuffle=True):
         self.annotation_lines = annotation_lines
         self.class_name_path = class_name_path
         self.num_classes = len([line.strip() for line in open(class_name_path).readlines()])
-        self.batch_size = batch_size
+        self.batch_size = yolo_config['batch_size']
+        self.target_img_size = yolo_config['img_size']
+        self.anchors = np.array(yolo_config['img_size']).reshape((9, 2))
         self.shuffle = shuffle
-        self.target_img_size = img_size
-
         self.indexes = np.arange(len(self.annotation_lines))
         self.folder_path = folder_path
-        self.anchors = np.array(anchors).reshape((9, 2))
         self.max_boxes = max_boxes
         self.on_epoch_end()
 

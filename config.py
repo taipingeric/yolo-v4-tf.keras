@@ -7,6 +7,7 @@ yolo_config = {
 
     # Training
     'iou_loss_thresh': 0.5,
+    'batch_size': 8,
     # Inference
     'max_boxes': 100,
     'iou_threshold':0.413,
