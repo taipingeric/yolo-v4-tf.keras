@@ -1,1 +1,0 @@
-dataset/train_img2/test3.jpg 155,1,493,421,0

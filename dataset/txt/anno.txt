@@ -1,8 +1,0 @@
-dataset/train_img2/gal2.jpg 71,36,1001,1016,0
-dataset/train_img2/yui.jpg 43,41,430,597,0
-dataset/train_img2/gal.jpg 168,26,626,533,0
-dataset/train_img2/lin.jpg 211,37,495,450,0
-dataset/train_img2/yui3.jpg 86,5,363,297,0
-dataset/train_img2/yui2.jpg 67,10,190,177,0
-dataset/train_img2/test3.jpg 153,5,491,421,0
-dataset/train_img2/jia.jpg 137,111,565,975,0
