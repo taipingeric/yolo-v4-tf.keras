@@ -36,7 +36,7 @@ model.predict('input.jpg')
 
     *HINT:* An easily used annotation tool: [labelImg](https://github.com/tzutalin/labelImg)
     
-    Example for a 2 object xml file
+    Example: A 2 object xml file
     ```xml
     <annotation>
         <folder>train_img2</folder>
@@ -79,22 +79,22 @@ model.predict('input.jpg')
     
     ```
 
-2. Convert all XML files to a single .txt file
+2. Convert all XML files to a single .txt file: 
 
     Row format: `img_path BOX0 BOX1 BOX2 ...`
     
     BOX format: `xmin,ymin,xmax,ymax,class_id`
     
-    Example:
+    Example: [xml_to_txt.py](xml_to_txt.py)
     ```
-    path/to/img1.jpg 50,60,70,80,0 70,90,100,180,2
-    path/to/img2.jpg 10,60,70,80,0
+    img1.jpg 50,60,70,80,0 70,90,100,180,2
+    img2.jpg 10,60,70,80,0
     ...
     ``` 
 
 3. Generate class name file, # of lines == # of classes
 
-    Example: coco_classes.txt
+    Example: [coco_classes.txt](class_names/coco_classes.txt)
     ```
     person
     bicycle
@@ -106,7 +106,7 @@ model.predict('input.jpg')
     ```
 4. Train with the code below
     
-    Example
+    Example: [train.ipynb](notebook/train.ipynb)
 ```python
 
 from utils import DataGenerator, read_annotation_lines
