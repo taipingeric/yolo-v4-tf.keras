@@ -132,7 +132,7 @@ class DataGenerator(Sequence):
         self.num_classes = len([line.strip() for line in open(class_name_path).readlines()])
         self.batch_size = yolo_config['batch_size']
         self.target_img_size = yolo_config['img_size']
-        self.anchors = np.array(yolo_config['img_size']).reshape((9, 2))
+        self.anchors = np.array(yolo_config['anchors']).reshape((9, 2))
         self.shuffle = shuffle
         self.indexes = np.arange(len(self.annotation_lines))
         self.folder_path = folder_path
