@@ -1,11 +1,11 @@
 import xml.etree.ElementTree as ET
 import os
-from os import getcwd
 from glob import glob
 
-FOLDER_PATH = '/Users/SheepLi/Google 雲端硬碟/yolo-v4-tf.keras'
-CLASSES_PATH = '/Users/SheepLi/Google 雲端硬碟/yolo-v4-tf.keras/coco_classes.txt'
-TXT_PATH = '/Users/SheepLi/Google 雲端硬碟/yolo-v4-tf.keras/dataset/train_txt/anno.txt'
+XML_PATH = './dataset/xml'# '/Users/SheepLi/Google 雲端硬碟/yolo-v4-tf.keras'
+CLASSES_PATH = './class_names/bccd_classes.txt' # '/Users/SheepLi/Google 雲端硬碟/yolo-v4-tf.keras/coco_classes.txt'
+TXT_PATH = './dataset/txt/anno-test.txt'# '/Users/SheepLi/Google 雲端硬碟/yolo-v4-tf.keras/dataset/train_txt/anno.txt'
+
 
 '''loads the classes'''
 def get_classes(classes_path):
@@ -14,21 +14,24 @@ def get_classes(classes_path):
     class_names = [c.strip() for c in class_names]
     return class_names
 
+
 classes = get_classes(CLASSES_PATH)
+assert len(classes) > 0, 'no class names detected!'
+print(f'num classes: {len(classes)}')
 
 # output file
 list_file = open(TXT_PATH, 'w')
 
-for path in glob(os.path.join(FOLDER_PATH, 'dataset/train_xml/*.xml')):
-    file_id = ''.join(path.split('/')[-1].split('.')[:-1])
-    print(file_id)
+for path in glob(os.path.join(XML_PATH, '*.xml')):
     in_file = open(path)
 
     # Parse .xml file
-    tree=ET.parse(in_file)
+    tree = ET.parse(in_file)
     root = tree.getroot()
     # Write object information to .txt file
-    list_file.write(f'dataset/train_img2/{file_id}.jpg') # path
+    file_name = root.find('filename').text
+    print(file_name)
+    list_file.write(file_name)
     for obj in root.iter('object'):
         cls = obj.find('name').text 
         cls_id = classes.index(cls)
