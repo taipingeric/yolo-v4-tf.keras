@@ -22,7 +22,7 @@ A simple tf.keras implementation of YOLO v4
 2. Initialize YOLO model and load weights
 3. Run prediction
 
-    [Example](notebook/Inference.ipynb):
+    Example: [Inference.ipynb](notebook/Inference.ipynb):
 ```python
 from models import Yolov4
 model = Yolov4(weight_path='yolov4.weights', 
