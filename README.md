@@ -18,15 +18,14 @@ A simple tf.keras implementation of YOLO v4
 ## Quick Start
 
 1. Download official YOLO v4 pre-trained weights from [github/AlexeyAB/darknet](https://drive.google.com/open?id=1cewMfusmPjYWbrnuJRuKhPMwRe_b9PaT)
-2. Build tf.keras model and load weights
+2. Initialize YOLO model and load weights
 3. Run prediction
 
-    Example:
+    ![Example](notebook/Inference.ipynb):
     ```python
     from models import Yolov4
     model = Yolov4(weight_path='yolov4.weights', 
                    class_name_path='class_names/coco_classes.txt')
-    model.build_model()
     model.predict('input.jpg')
     ```
     
