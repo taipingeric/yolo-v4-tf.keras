@@ -35,7 +35,10 @@ class Yolov4(object):
         self.max_boxes = yolo_config['max_boxes']
         self.iou_loss_thresh = yolo_config['iou_loss_thresh']
         self.config = yolo_config
-        assert self.num_classes > 0
+        assert self.num_classes > 0, 'no classes detected!'
+        self.build_model(load_pretrained=True if self.weight_path else False)
+        
+
 
     def build_model(self, load_pretrained=True):
         tf.keras.backend.clear_session()
