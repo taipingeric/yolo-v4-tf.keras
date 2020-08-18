@@ -36,9 +36,12 @@ class Yolov4(object):
         self.iou_loss_thresh = yolo_config['iou_loss_thresh']
         self.config = yolo_config
         assert self.num_classes > 0, 'no classes detected!'
-        self.build_model(load_pretrained=True if self.weight_path else False)
-        
 
+        mirrored_strategy = tf.distribute.MirroredStrategy()
+        with mirrored_strategy.scope():
+            self.build_model(load_pretrained=True if self.weight_path else False)
+            self.training_model.compile(optimizer=optimizers.Adam(lr=1e-3),
+                                        loss={'yolo_loss': lambda y_true, y_pred: y_pred})
 
     def build_model(self, load_pretrained=True):
         tf.keras.backend.clear_session()
@@ -81,8 +84,6 @@ class Yolov4(object):
         return img
 
     def fit(self, train_data_gen, epochs, val_data_gen=None, initial_epoch=0, callbacks=None):
-        self.training_model.compile(optimizer=optimizers.Adam(lr=1e-3),
-                                    loss={'yolo_loss': lambda y_true, y_pred: y_pred})
         self.training_model.fit(train_data_gen,
                                 steps_per_epoch=len(train_data_gen),
                                 validation_data=val_data_gen,

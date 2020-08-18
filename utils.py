@@ -130,7 +130,8 @@ class DataGenerator(Sequence):
         self.annotation_lines = annotation_lines
         self.class_name_path = class_name_path
         self.num_classes = len([line.strip() for line in open(class_name_path).readlines()])
-        self.batch_size = yolo_config['batch_size']
+        self.num_gpu = yolo_config['num_gpu']
+        self.batch_size = yolo_config['batch_size'] * self.num_gpu
         self.target_img_size = yolo_config['img_size']
         self.anchors = np.array(yolo_config['anchors']).reshape((9, 2))
         self.shuffle = shuffle
