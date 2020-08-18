@@ -68,9 +68,6 @@ class Yolov4(object):
         # output: [boxes, scores, classes, valid_detections]
         self.inference_model = models.Model(input_layer, nms(yolov4_output, self.img_size, self.num_classes))
 
-        self.training_model.compile(optimizer=optimizers.Adam(lr=1e-3),
-                                    loss={'yolo_loss': lambda y_true, y_pred: y_pred})
-
         if load_pretrained and self.weight_path and self.weight_path.endswith('.weights'):
             load_weights(self.yolo_model, self.weight_path)
 
