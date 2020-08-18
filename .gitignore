@@ -5,3 +5,4 @@ __pycache__/
 .ipynb_checkpoints
 *.
 dataset/
+test_nb
