@@ -4,4 +4,4 @@ __pycache__/
 *.h5
 .ipynb_checkpoints
 *.
-dataset
+dataset/
