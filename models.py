@@ -44,14 +44,12 @@ class Yolov4(object):
             #                             loss={'yolo_loss': lambda y_true, y_pred: y_pred})
 
     def build_model(self, load_pretrained=True):
+        tf.keras.backend.clear_session()
         mirrored_strategy = tf.distribute.MirroredStrategy()
         with mirrored_strategy.scope():
-            tf.keras.backend.clear_session()
             input_layer = layers.Input(self.img_size)
             yolov4_output = yolov4_neck(input_layer, self.num_classes)
             self.yolo_model = models.Model(input_layer, yolov4_output)
-            if load_pretrained and self.weight_path and self.weight_path.endswith('.weights'):
-                load_weights(self.yolo_model, self.weight_path)
 
             # Build training model
             y_true = [
@@ -73,6 +71,9 @@ class Yolov4(object):
 
             self.training_model.compile(optimizer=optimizers.Adam(lr=1e-3),
                                         loss={'yolo_loss': lambda y_true, y_pred: y_pred})
+
+        if load_pretrained and self.weight_path and self.weight_path.endswith('.weights'):
+            load_weights(self.yolo_model, self.weight_path)
 
     def load_model(self, path):
         self.yolo_model = models.load_model(path, compile=False)
