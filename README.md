@@ -13,7 +13,7 @@ A simple tf.keras implementation of YOLO v4
 - [ ] Label smoothing
 - [X] Mish
 - [X] IoU, GIoU, CIoU loss 
-- [ ] multi-GPU training
+- [X] multi-GPU training
 
 
 ## Quick Start
