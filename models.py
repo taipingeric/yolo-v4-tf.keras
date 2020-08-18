@@ -37,43 +37,45 @@ class Yolov4(object):
         self.config = yolo_config
         assert self.num_classes > 0, 'no classes detected!'
 
-        # mirrored_strategy = tf.distribute.MirroredStrategy()
-        # with mirrored_strategy.scope():
-        self.build_model(load_pretrained=True if self.weight_path else False)
-            # self.training_model.compile(optimizer=optimizers.Adam(lr=1e-3),
-            #                             loss={'yolo_loss': lambda y_true, y_pred: y_pred})
+        tf.keras.backend.clear_session()
+        if yolo_config['num_gpu'] > 1:
+            mirrored_strategy = tf.distribute.MirroredStrategy()
+            with mirrored_strategy.scope():
+                self.build_model(load_pretrained=True if self.weight_path else False)
+        else:
+            self.build_model(load_pretrained=True if self.weight_path else False)
 
     def build_model(self, load_pretrained=True):
-        tf.keras.backend.clear_session()
-        mirrored_strategy = tf.distribute.MirroredStrategy()
-        with mirrored_strategy.scope():
-            input_layer = layers.Input(self.img_size)
-            yolov4_output = yolov4_neck(input_layer, self.num_classes)
-            self.yolo_model = models.Model(input_layer, yolov4_output)
+        input_layer = layers.Input(self.img_size)
+        yolov4_output = yolov4_neck(input_layer, self.num_classes)
+        self.yolo_model = models.Model(input_layer, yolov4_output)
 
-            # Build training model
-            y_true = [
-                layers.Input(name='input_2', shape=(52, 52, 3, (self.num_classes + 5))),  # label small boxes
-                layers.Input(name='input_3', shape=(26, 26, 3, (self.num_classes + 5))),  # label medium boxes
-                layers.Input(name='input_4', shape=(13, 13, 3, (self.num_classes + 5))),  # label large boxes
-                layers.Input(name='input_5', shape=(self.max_boxes, 4)),  # true bboxes
-            ]
-            loss_list = tf.keras.layers.Lambda(yolo_loss, name='yolo_loss',
-                                               arguments={'num_classes': self.num_classes,
-                                                          'iou_loss_thresh': self.iou_loss_thresh,
-                                                          'anchors': self.anchors})([*self.yolo_model.output, *y_true])
-            self.training_model = models.Model([self.yolo_model.input, *y_true], loss_list)
+        # Build training model
+        y_true = [
+            layers.Input(name='input_2', shape=(52, 52, 3, (self.num_classes + 5))),  # label small boxes
+            layers.Input(name='input_3', shape=(26, 26, 3, (self.num_classes + 5))),  # label medium boxes
+            layers.Input(name='input_4', shape=(13, 13, 3, (self.num_classes + 5))),  # label large boxes
+            layers.Input(name='input_5', shape=(self.max_boxes, 4)),  # true bboxes
+        ]
+        loss_list = tf.keras.layers.Lambda(yolo_loss, name='yolo_loss',
+                                           arguments={'num_classes': self.num_classes,
+                                                      'iou_loss_thresh': self.iou_loss_thresh,
+                                                      'anchors': self.anchors})([*self.yolo_model.output, *y_true])
+        self.training_model = models.Model([self.yolo_model.input, *y_true], loss_list)
 
-            # Build inference model
-            yolov4_output = yolov4_head(yolov4_output, self.num_classes, self.anchors, self.xyscale)
-            # output: [boxes, scores, classes, valid_detections]
-            self.inference_model = models.Model(input_layer, nms(yolov4_output, self.img_size, self.num_classes))
+        # Build inference model
+        yolov4_output = yolov4_head(yolov4_output, self.num_classes, self.anchors, self.xyscale)
+        # output: [boxes, scores, classes, valid_detections]
+        self.inference_model = models.Model(input_layer, nms(yolov4_output, self.img_size, self.num_classes))
 
-            self.training_model.compile(optimizer=optimizers.Adam(lr=1e-3),
-                                        loss={'yolo_loss': lambda y_true, y_pred: y_pred})
+        self.training_model.compile(optimizer=optimizers.Adam(lr=1e-3),
+                                    loss={'yolo_loss': lambda y_true, y_pred: y_pred})
 
         if load_pretrained and self.weight_path and self.weight_path.endswith('.weights'):
             load_weights(self.yolo_model, self.weight_path)
+
+        self.training_model.compile(optimizer=optimizers.Adam(lr=1e-3),
+                                    loss={'yolo_loss': lambda y_true, y_pred: y_pred})
 
     def load_model(self, path):
         self.yolo_model = models.load_model(path, compile=False)
