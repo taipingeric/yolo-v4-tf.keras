@@ -66,7 +66,10 @@ class Yolov4(object):
         # Build inference model
         yolov4_output = yolov4_head(yolov4_output, self.num_classes, self.anchors, self.xyscale)
         # output: [boxes, scores, classes, valid_detections]
-        self.inference_model = models.Model(input_layer, nms(yolov4_output, self.img_size, self.num_classes))
+        self.inference_model = models.Model(input_layer,
+                                            nms(yolov4_output, self.img_size, self.num_classes,
+                                                iou_threshold=self.config['iou_threshold'],
+                                                score_threshold=self.config['score_threshold']))
 
         if load_pretrained and self.weight_path and self.weight_path.endswith('.weights'):
             load_weights(self.yolo_model, self.weight_path)
