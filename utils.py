@@ -95,13 +95,13 @@ def draw_bbox(img, detections, cmap, random_color=True, figsize=(10, 10), show_t
     :param plot_img: if plot img with bboxes
     :return: None
     """
+    img = np.array(img)
     scale = max(img.shape[0:2]) / 416
     line_width = int(2 * scale)
 
     for _, row in detections.iterrows():
         x1, y1, x2, y2, cls, score, w, h = row.values
         color = list(np.random.random(size=3) * 255) if random_color else cmap[cls]
-        print(img.shape, type(img))
         cv2.rectangle(img, (x1, y1), (x2, y2), color, line_width)
         if show_text:
             text = f'{cls} {score:.2f}'
