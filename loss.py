@@ -7,43 +7,36 @@ import tensorflow.keras.backend as K
 import tensorflow as tf
 
 
+def xywh_to_x1y1x2y2(boxes):
+    return tf.concat([boxes[..., :2] - boxes[..., 2:] * 0.5, boxes[..., :2] + boxes[..., 2:] * 0.5], axis=-1)
+
+
 # x,y,w,h
 def bbox_iou(boxes1, boxes2):
     boxes1_area = boxes1[..., 2] * boxes1[..., 3]  # w * h
     boxes2_area = boxes2[..., 2] * boxes2[..., 3]
 
     # (x, y, w, h) -> (x0, y0, x1, y1)
-    boxes1 = tf.concat([boxes1[..., :2] - boxes1[..., 2:] * 0.5, boxes1[..., :2] + boxes1[..., 2:] * 0.5], axis=-1)
-    boxes2 = tf.concat([boxes2[..., :2] - boxes2[..., 2:] * 0.5, boxes2[..., :2] + boxes2[..., 2:] * 0.5], axis=-1)
+    boxes1 = xywh_to_x1y1x2y2(boxes1)
+    boxes2 = xywh_to_x1y1x2y2(boxes2)
 
     # coordinates of intersection
     top_left = tf.maximum(boxes1[..., :2], boxes2[..., :2])
     bottom_right = tf.minimum(boxes1[..., 2:], boxes2[..., 2:])
-
     intersection_xy = tf.maximum(bottom_right - top_left, 0.0)
+
     intersection_area = intersection_xy[..., 0] * intersection_xy[..., 1]
-    union_area = boxes1_area + boxes2_area - intersection_area  # union_area
+    union_area = boxes1_area + boxes2_area - intersection_area
 
     return 1.0 * intersection_area / (union_area + 1e-9)
 
+
 def bbox_giou(bboxes1, bboxes2):
-    bboxes1_area = bboxes1[..., 2] * bboxes1[..., 3]
+    bboxes1_area = bboxes1[..., 2] * bboxes1[..., 3] # w*h
     bboxes2_area = bboxes2[..., 2] * bboxes2[..., 3]
 
-    bboxes1_coor = tf.concat(
-        [
-            bboxes1[..., :2] - bboxes1[..., 2:] * 0.5,
-            bboxes1[..., :2] + bboxes1[..., 2:] * 0.5,
-        ],
-        axis=-1,
-    )
-    bboxes2_coor = tf.concat(
-        [
-            bboxes2[..., :2] - bboxes2[..., 2:] * 0.5,
-            bboxes2[..., :2] + bboxes2[..., 2:] * 0.5,
-        ],
-        axis=-1,
-    )
+    bboxes1_coor = tf.concat([bboxes1[..., :2] - bboxes1[..., 2:] * 0.5, bboxes1[..., :2] + bboxes1[..., 2:] * 0.5,], axis=-1)
+    bboxes2_coor = tf.concat([bboxes2[..., :2] - bboxes2[..., 2:] * 0.5, bboxes2[..., :2] + bboxes2[..., 2:] * 0.5,], axis=-1)
 
     left_up = tf.maximum(bboxes1_coor[..., :2], bboxes2_coor[..., :2])
     right_down = tf.minimum(bboxes1_coor[..., 2:], bboxes2_coor[..., 2:])
@@ -66,6 +59,7 @@ def bbox_giou(bboxes1, bboxes2):
     giou = iou - tf.math.divide_no_nan(enclose_area - union_area, enclose_area)
 
     return giou
+
 
 def bbox_ciou(boxes1, boxes2):
     '''
@@ -128,6 +122,7 @@ def bbox_ciou(boxes1, boxes2):
     ciou = iou - 1.0 * p2 / enclose_c2 - 1.0 * a * v
     return ciou
 
+
 def yolo_loss(args, num_classes, iou_loss_thresh, anchors):
     conv_lbbox = args[2]   # (?, ?, ?, 3*(num_classes+5))
     conv_mbbox = args[1]   # (?, ?, ?, 3*(num_classes+5))
@@ -148,6 +143,7 @@ def yolo_loss(args, num_classes, iou_loss_thresh, anchors):
     prob_loss = (lbbox_prob_loss + sbbox_prob_loss + mbbox_prob_loss) * 1
 
     return ciou_loss+conf_loss+prob_loss
+
 
 def loss_layer(conv, pred, label, bboxes, stride, num_class, iou_loss_thresh):
     conv_shape = tf.shape(conv)
@@ -219,6 +215,7 @@ def loss_layer(conv, pred, label, bboxes, stride, num_class, iou_loss_thresh):
     prob_loss = tf.reduce_mean(tf.reduce_sum(prob_loss, axis=[1, 2, 3, 4]))  # 每个样本单独计算自己的prob_loss，再求平均值
 
     return ciou_loss, conf_loss, prob_loss
+
 
 def decode(conv_output, anchors, stride, num_class):
     conv_shape       = tf.shape(conv_output)
