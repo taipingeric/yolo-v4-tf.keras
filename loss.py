@@ -31,27 +31,28 @@ def bbox_iou(boxes1, boxes2):
     return 1.0 * intersection_area / (union_area + 1e-9)
 
 
-def bbox_giou(bboxes1, bboxes2):
-    bboxes1_area = bboxes1[..., 2] * bboxes1[..., 3] # w*h
-    bboxes2_area = bboxes2[..., 2] * bboxes2[..., 3]
+def bbox_giou(boxes1, boxes2):
+    boxes1_area = boxes1[..., 2] * boxes1[..., 3]  # w*h
+    boxes2_area = boxes2[..., 2] * boxes2[..., 3]
+    #
 
-    bboxes1_coor = tf.concat([bboxes1[..., :2] - bboxes1[..., 2:] * 0.5, bboxes1[..., :2] + bboxes1[..., 2:] * 0.5,], axis=-1)
-    bboxes2_coor = tf.concat([bboxes2[..., :2] - bboxes2[..., 2:] * 0.5, bboxes2[..., :2] + bboxes2[..., 2:] * 0.5,], axis=-1)
+    # (x, y, w, h) -> (x0, y0, x1, y1)
+    boxes1 = xywh_to_x1y1x2y2(boxes1)
+    boxes2 = xywh_to_x1y1x2y2(boxes2)
 
-    left_up = tf.maximum(bboxes1_coor[..., :2], bboxes2_coor[..., :2])
-    right_down = tf.minimum(bboxes1_coor[..., 2:], bboxes2_coor[..., 2:])
+    left_up = tf.maximum(boxes1[..., :2], boxes2[..., :2])
+    right_down = tf.minimum(boxes1[..., 2:], boxes2[..., 2:])
 
     inter_section = tf.maximum(right_down - left_up, 0.0)
     inter_area = inter_section[..., 0] * inter_section[..., 1]
 
-    union_area = bboxes1_area + bboxes2_area - inter_area
+    union_area = boxes1_area + boxes2_area - inter_area
 
     iou = tf.math.divide_no_nan(inter_area, union_area)
+    # iou = bbox_iou(boxes1, boxes2)
 
-    enclose_left_up = tf.minimum(bboxes1_coor[..., :2], bboxes2_coor[..., :2])
-    enclose_right_down = tf.maximum(
-        bboxes1_coor[..., 2:], bboxes2_coor[..., 2:]
-    )
+    enclose_left_up = tf.minimum(boxes1[..., :2], boxes2[..., :2])
+    enclose_right_down = tf.maximum(boxes1[..., 2:], boxes2[..., 2:])
 
     enclose_section = enclose_right_down - enclose_left_up
     enclose_area = enclose_section[..., 0] * enclose_section[..., 1]
