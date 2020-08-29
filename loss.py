@@ -28,34 +28,32 @@ def bbox_iou(boxes1, boxes2):
     intersection_area = intersection_xy[..., 0] * intersection_xy[..., 1]
     union_area = boxes1_area + boxes2_area - intersection_area
 
-    return 1.0 * intersection_area / (union_area + 1e-9)
+    return 1.0 * intersection_area / (union_area + tf.keras.backend.epsilon())
 
 
 def bbox_giou(boxes1, boxes2):
     boxes1_area = boxes1[..., 2] * boxes1[..., 3]  # w*h
     boxes2_area = boxes2[..., 2] * boxes2[..., 3]
-    #
 
     # (x, y, w, h) -> (x0, y0, x1, y1)
     boxes1 = xywh_to_x1y1x2y2(boxes1)
     boxes2 = xywh_to_x1y1x2y2(boxes2)
 
-    left_up = tf.maximum(boxes1[..., :2], boxes2[..., :2])
-    right_down = tf.minimum(boxes1[..., 2:], boxes2[..., 2:])
+    top_left = tf.maximum(boxes1[..., :2], boxes2[..., :2])
+    bottom_right = tf.minimum(boxes1[..., 2:], boxes2[..., 2:])
 
-    inter_section = tf.maximum(right_down - left_up, 0.0)
-    inter_area = inter_section[..., 0] * inter_section[..., 1]
+    intersection_xy = tf.maximum(bottom_right - top_left, 0.0)
+    intersection_area = intersection_xy[..., 0] * intersection_xy[..., 1]
 
-    union_area = boxes1_area + boxes2_area - inter_area
+    union_area = boxes1_area + boxes2_area - intersection_area
 
-    iou = tf.math.divide_no_nan(inter_area, union_area)
-    # iou = bbox_iou(boxes1, boxes2)
+    iou = 1.0 * intersection_area / (union_area + tf.keras.backend.epsilon())
 
-    enclose_left_up = tf.minimum(boxes1[..., :2], boxes2[..., :2])
-    enclose_right_down = tf.maximum(boxes1[..., 2:], boxes2[..., 2:])
+    enclose_top_left = tf.minimum(boxes1[..., :2], boxes2[..., :2])
+    enclose_bottom_right = tf.maximum(boxes1[..., 2:], boxes2[..., 2:])
 
-    enclose_section = enclose_right_down - enclose_left_up
-    enclose_area = enclose_section[..., 0] * enclose_section[..., 1]
+    enclose_xy = enclose_bottom_right - enclose_top_left
+    enclose_area = enclose_xy[..., 0] * enclose_xy[..., 1]
 
     giou = iou - tf.math.divide_no_nan(enclose_area - union_area, enclose_area)
 
