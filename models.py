@@ -72,7 +72,12 @@ class Yolov4(object):
                                                 score_threshold=self.config['score_threshold']))
 
         if load_pretrained and self.weight_path and self.weight_path.endswith('.weights'):
-            load_weights(self.yolo_model, self.weight_path)
+            if self.weight_path.endswith('.weights'):
+                load_weights(self.yolo_model, self.weight_path)
+                print(f'load from {self.weight_path}')
+            elif self.weight_path.endswith('.h5'):
+                self.training_model.load_weights(self.weight_path)
+                print(f'load from {self.weight_path}')
 
         self.training_model.compile(optimizer=optimizers.Adam(lr=1e-3),
                                     loss={'yolo_loss': lambda y_true, y_pred: y_pred})
