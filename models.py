@@ -76,7 +76,7 @@ class Yolov4(object):
                 load_weights(self.yolo_model, self.weight_path)
                 print(f'load from {self.weight_path}')
             elif self.weight_path.endswith('.h5'):
-                self.training_model.load_weights(self.weight_path)
+                self.yolo_model.load_weights(self.weight_path)
                 print(f'load from {self.weight_path}')
 
         self.training_model.compile(optimizer=optimizers.Adam(lr=1e-3),
