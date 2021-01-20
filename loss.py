@@ -152,6 +152,7 @@ def loss_layer(conv, pred, label, bboxes, stride, num_class, iou_loss_thresh):
     respond_bbox = label[:, :, :, :, 4:5]
     label_prob = label[:, :, :, :, 5:]
 
+    # Coordinate loss
     ciou = tf.expand_dims(bbox_giou(pred_xywh, label_xywh), axis=-1)  # (8, 13, 13, 3, 1)
     # ciou = tf.expand_dims(bbox_ciou(pred_xywh, label_xywh), axis=-1)  # (8, 13, 13, 3, 1)
     input_size = tf.cast(input_size, tf.float32)
@@ -160,7 +161,7 @@ def loss_layer(conv, pred, label, bboxes, stride, num_class, iou_loss_thresh):
     bbox_loss_scale = 2.0 - 1.0 * label_xywh[:, :, :, :, 2:3] * label_xywh[:, :, :, :, 3:4] / (input_size ** 2)
     ciou_loss = respond_bbox * bbox_loss_scale * (1 - ciou)  # iou loss for respond bbox
 
-    # cls loss for respond bbox
+    # Classification loss for respond bbox
     prob_loss = respond_bbox * tf.nn.sigmoid_cross_entropy_with_logits(labels=label_prob, logits=conv_raw_prob)
 
     expand_pred_xywh = pred_xywh[:, :, :, :, np.newaxis, :]  # (?, grid_h, grid_w, 3, 1, 4)
@@ -170,9 +171,8 @@ def loss_layer(conv, pred, label, bboxes, stride, num_class, iou_loss_thresh):
 
     # ignore the bbox which is not respond bbox and max iou < threshold
     respond_bgd = (1.0 - respond_bbox) * tf.cast(max_iou < iou_loss_thresh, tf.float32)
-    # respond_bgd = (1.0 - respond_bbox)
 
-    # BCE fot confidence loss
+    # Confidence loss
     conf_focal = tf.pow(respond_bbox - pred_conf, 2)
 
     conf_loss = conf_focal * (
@@ -189,15 +189,15 @@ def loss_layer(conv, pred, label, bboxes, stride, num_class, iou_loss_thresh):
 
 
 def decode(conv_output, anchors, stride, num_class):
-    conv_shape       = tf.shape(conv_output)
-    batch_size       = conv_shape[0]
-    output_size      = conv_shape[1]
+    conv_shape = tf.shape(conv_output)
+    batch_size = conv_shape[0]
+    output_size = conv_shape[1]
     anchor_per_scale = len(anchors)
     conv_output = tf.reshape(conv_output, (batch_size, output_size, output_size, anchor_per_scale, 5 + num_class))
     conv_raw_dxdy = conv_output[:, :, :, :, 0:2]
     conv_raw_dwdh = conv_output[:, :, :, :, 2:4]
     conv_raw_conf = conv_output[:, :, :, :, 4:5]
-    conv_raw_prob = conv_output[:, :, :, :, 5: ]
+    conv_raw_prob = conv_output[:, :, :, :, 5:]
     y = tf.tile(tf.range(output_size, dtype=tf.int32)[:, tf.newaxis], [1, output_size])
     x = tf.tile(tf.range(output_size, dtype=tf.int32)[tf.newaxis, :], [output_size, 1])
     xy_grid = tf.concat([x[:, :, tf.newaxis], y[:, :, tf.newaxis]], axis=-1)

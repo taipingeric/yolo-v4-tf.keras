@@ -201,8 +201,6 @@ class DataGenerator(Sequence):
             boxes = boxes[:self.max_boxes]
             boxes[:, [0, 2]] = boxes[:, [0, 2]] * scale_w  # + dx
             boxes[:, [1, 3]] = boxes[:, [1, 3]] * scale_h  # + dy
-            # boxes[:, [0, 2]] = np.clip(boxes[:, [0, 2]], 0, w)
-            # boxes[:, [1, 3]] = np.clip(boxes[:, [1, 3]], 0, h)
             box_data[:len(boxes)] = boxes
 
         return image_data, box_data

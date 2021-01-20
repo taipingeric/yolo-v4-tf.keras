@@ -46,6 +46,7 @@ class Yolov4(object):
             self.build_model(load_pretrained=True if self.weight_path else False)
 
     def build_model(self, load_pretrained=True):
+        # core yolo model
         input_layer = layers.Input(self.img_size)
         yolov4_output = yolov4_neck(input_layer, self.num_classes)
         self.yolo_model = models.Model(input_layer, yolov4_output)
@@ -105,7 +106,7 @@ class Yolov4(object):
                                 callbacks=callbacks,
                                 initial_epoch=initial_epoch)
     # raw_img: RGB
-    def predict_img(self, raw_img, random_color=True, plot_img=True, figsize=(10, 10), show_text=True):
+    def predict_img(self, raw_img, random_color=True, plot_img=True, figsize=(10, 10), show_text=True, return_output=False):
         print('img shape: ', raw_img.shape)
         img = self.preprocess_img(raw_img)
         imgs = np.expand_dims(img, axis=0)
@@ -114,9 +115,12 @@ class Yolov4(object):
                                         model_outputs=pred_output,
                                         class_names=self.class_names)
         if plot_img:
-            draw_bbox(raw_img, detections, cmap=self.class_color, random_color=random_color, figsize=figsize,
+            output_img = draw_bbox(raw_img, detections, cmap=self.class_color, random_color=random_color, figsize=figsize,
                       show_text=show_text)
-        return detections
+        if return_output:
+            return output_img, detections
+        else:
+            return detections
 
     def predict(self, img_path, random_color=True, plot_img=True, figsize=(10, 10), show_text=True):
         raw_img = cv2.imread(img_path)[:, :, ::-1]
