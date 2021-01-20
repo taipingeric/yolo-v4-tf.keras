@@ -114,9 +114,9 @@ class Yolov4(object):
         detections = get_detection_data(img=raw_img,
                                         model_outputs=pred_output,
                                         class_names=self.class_names)
-        if plot_img:
-            output_img = draw_bbox(raw_img, detections, cmap=self.class_color, random_color=random_color, figsize=figsize,
-                      show_text=show_text)
+
+        output_img = draw_bbox(raw_img, detections, cmap=self.class_color, random_color=random_color, figsize=figsize,
+                  show_text=show_text, show_img=plot_img)
         if return_output:
             return output_img, detections
         else:
