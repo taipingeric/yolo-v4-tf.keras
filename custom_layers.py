@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras import layers, initializers, models
+from config import yolo_config
 
 
 def conv(x, filters, kernel_size, downsampling=False, activation='leaky', batch_norm=True):
@@ -199,17 +200,18 @@ def yolov4_neck(x, num_classes):
 
 
 def yolov4_head(yolo_neck_outputs, classes, anchors, xyscale):
+    size = yolo_config['img_size'][0]
     bbox0, object_probability0, class_probabilities0, pred_box0 = get_boxes(yolo_neck_outputs[0],
                                                                             anchors=anchors[0, :, :], classes=classes,
-                                                                            grid_size=52, strides=8,
+                                                                            grid_size=int(52*(size/416)), strides=8,
                                                                             xyscale=xyscale[0])
     bbox1, object_probability1, class_probabilities1, pred_box1 = get_boxes(yolo_neck_outputs[1],
                                                                             anchors=anchors[1, :, :], classes=classes,
-                                                                            grid_size=26, strides=16,
+                                                                            grid_size=int(26*(size/416)), strides=16,
                                                                             xyscale=xyscale[1])
     bbox2, object_probability2, class_probabilities2, pred_box2 = get_boxes(yolo_neck_outputs[2],
                                                                             anchors=anchors[2, :, :], classes=classes,
-                                                                            grid_size=13, strides=32,
+                                                                            grid_size=int(13*(size/416)), strides=32,
                                                                             xyscale=xyscale[2])
     x = [bbox0, object_probability0, class_probabilities0, pred_box0,
          bbox1, object_probability1, class_probabilities1, pred_box1,
