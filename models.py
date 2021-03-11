@@ -72,7 +72,7 @@ class Yolov4(object):
                                                 iou_threshold=self.config['iou_threshold'],
                                                 score_threshold=self.config['score_threshold']))
 
-        if load_pretrained and self.weight_path and (self.weight_path.endswith('.weights') or self.weight_path.endswitch('.h5')):
+        if load_pretrained and self.weight_path and (self.weight_path.endswith('.weights') or self.weight_path.endswith('.h5')):
             if self.weight_path.endswith('.weights'):
                 load_weights(self.yolo_model, self.weight_path)
                 print(f'load from {self.weight_path}')
