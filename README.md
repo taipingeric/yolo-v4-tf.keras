@@ -129,9 +129,8 @@ model.fit(data_gen_train,
 
 ```
    
-## Reference
+## Acknowledgements
 
-The repositories I've admired and learned a lot
 
 * [qqwweee/keras-yolo3](https://github.com/qqwweee/keras-yolo3)
 * [AlexeyAB/darknet](https://github.com/AlexeyAB/darknet)
