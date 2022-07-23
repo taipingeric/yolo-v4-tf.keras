@@ -67,6 +67,7 @@ class Yolov4(object):
         # Build inference model
         yolov4_output = yolov4_head(yolov4_output, self.num_classes, self.anchors, self.xyscale)
         # output: [boxes, scores, classes, valid_detections]
+        self.inference_model_raw = models.Model(input_layer, yolov4_output)
         self.inference_model = models.Model(input_layer,
                                             nms(yolov4_output, self.img_size, self.num_classes,
                                                 iou_threshold=self.config['iou_threshold'],
@@ -128,7 +129,7 @@ class Yolov4(object):
 
     def export_gt(self, annotation_path, gt_folder_path):
         with open(annotation_path) as file:
-            for line in file:
+            for line in tqdm(file):
                 line = line.split(' ')
                 filename = line[0].split(os.sep)[-1].split('.')[0]
                 objs = line[1:]
@@ -136,7 +137,7 @@ class Yolov4(object):
                 with open(os.path.join(gt_folder_path, filename + '.txt'), 'w') as output_file:
                     for obj in objs:
                         x_min, y_min, x_max, y_max, class_id = [float(o) for o in obj.strip().split(',')]
-                        output_file.write(f'{self.class_names[int(class_id)]} {x_min} {y_min} {x_max} {y_max}\n')
+                        output_file.write(f'{self.class_names[int(class_id)]} {int(x_min)} {int(y_min)} {int(x_max)} {int(y_max)}\n')
 
     def export_prediction(self, annotation_path, pred_folder_path, img_folder_path, bs=2):
         with open(annotation_path) as file:
@@ -156,7 +157,13 @@ class Yolov4(object):
                     imgs[j] = img
 
                 # process batch output
-                b_boxes, b_scores, b_classes, b_valid_detections = self.inference_model.predict(imgs)
+                # self.yolo_model = models.load_model(path, compile=False)
+                # yolov4_output = yolov4_head(self.yolo_model.output, self.num_classes, self.anchors, self.xyscale)
+                # self.inference_model = models.Model(self.yolo_model.input,
+                #                                     nms(yolov4_output, self.img_size, self.num_classes))
+                # output_yolo_model = self.model
+                # b_boxes, b_scores, b_classes, b_valid_detections = self.inference_model.predict(imgs)
+                b_boxes, b_scores, b_classes, b_valid_detections = self.inference_model_raw.predict(imgs)
                 for k in range(len(paths)):
                     num_boxes = b_valid_detections[k]
                     raw_img_shape = raw_img_shapes[k]
@@ -176,7 +183,7 @@ class Yolov4(object):
                     with open(output_path, 'w') as pred_file:
                         for box_idx in range(num_boxes):
                             b = boxes[box_idx]
-                            pred_file.write(f'{cls_names[box_idx]} {scores[box_idx]} {b[0]} {b[1]} {b[2]} {b[3]}\n')
+                            pred_file.write(f'{cls_names[box_idx]} {scores[box_idx]} {int(b[0])} {int(b[1])} {int(b[2])} {int(b[3])}\n')
 
 
     def eval_map(self, gt_folder_path, pred_folder_path, temp_json_folder_path, output_files_path):
