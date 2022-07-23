@@ -318,4 +318,4 @@ def decode(model_ouputs, input_shape, num_class):
     boxes = boxes / input_shape[0]  # box normalization: relative img size
     valid_detections = tf.fill([bs], tf.shape(class_probabilities)[1])
 
-    return scores, boxes, class_probabilities, valid_detections
+    return boxes, scores, class_probabilities, valid_detections
