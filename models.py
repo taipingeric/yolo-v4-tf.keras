@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.keras import layers, models, optimizers
 
-from custom_layers import yolov4_neck, yolov4_head, nms
+from custom_layers import yolov4_neck, yolov4_head, nms, decode
 from utils import load_weights, get_detection_data, draw_bbox, voc_ap, draw_plot_func, read_txt_to_list
 from config import yolo_config
 from loss import yolo_loss
@@ -163,7 +163,9 @@ class Yolov4(object):
                 #                                     nms(yolov4_output, self.img_size, self.num_classes))
                 # output_yolo_model = self.model
                 # b_boxes, b_scores, b_classes, b_valid_detections = self.inference_model.predict(imgs)
-                b_boxes, b_scores, b_classes, b_valid_detections = self.inference_model_raw.predict(imgs)
+                pred_output = self.inference_model_raw(imgs)
+                b_boxes, b_scores, b_classes, b_valid_detections = decode(pred_output)
+                # b_boxes, b_scores, b_classes, b_valid_detections = self.inference_model_raw.predict(imgs)
                 for k in range(len(paths)):
                     num_boxes = b_valid_detections[k]
                     raw_img_shape = raw_img_shapes[k]
