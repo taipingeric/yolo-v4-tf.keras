@@ -125,13 +125,12 @@ class DataGenerator(Sequence):
     """
     def __init__(self,
                  annotation_lines,
-                 class_name_path,
+                 num_classes,
                  folder_path,
                  max_boxes=100,
                  shuffle=True):
         self.annotation_lines = annotation_lines
-        self.class_name_path = class_name_path
-        self.num_classes = len([line.strip() for line in open(class_name_path).readlines()])
+        self.num_classes = num_classes
         self.num_gpu = yolo_config['num_gpu']
         self.batch_size = yolo_config['batch_size'] * self.num_gpu
         self.target_img_size = yolo_config['img_size']
