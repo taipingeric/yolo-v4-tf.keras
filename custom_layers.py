@@ -316,6 +316,6 @@ def decode(model_ouputs, input_shape, num_class):
     scores = confidence * class_probabilities
     boxes = tf.expand_dims(boxes, axis=-2)
     boxes = boxes / input_shape[0]  # box normalization: relative img size
-    valid_detections = [int(tf.shape(class_probabilities)[1])] * bs
+    valid_detections = tf.fill([bs], tf.shape(class_probabilities)[1])
 
     return scores, boxes, class_probabilities, valid_detections
