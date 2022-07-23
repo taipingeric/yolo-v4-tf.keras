@@ -266,6 +266,40 @@ def nms(model_ouputs, input_shape, num_class, iou_threshold=0.413, score_thresho
     :param input_shape: size of input image
     :return: nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
     """
+    # bs = tf.shape(model_ouputs[0])[0]
+    # boxes = tf.zeros((bs, 0, 4))
+    # confidence = tf.zeros((bs, 0, 1))
+    # class_probabilities = tf.zeros((bs, 0, num_class))
+    #
+    # for output_idx in range(0, len(model_ouputs), 4):
+    #     output_xy = model_ouputs[output_idx]
+    #     output_conf = model_ouputs[output_idx + 1]
+    #     output_classes = model_ouputs[output_idx + 2]
+    #     boxes = tf.concat([boxes, tf.reshape(output_xy, (bs, -1, 4))], axis=1)
+    #     confidence = tf.concat([confidence, tf.reshape(output_conf, (bs, -1, 1))], axis=1)
+    #     class_probabilities = tf.concat([class_probabilities, tf.reshape(output_classes, (bs, -1, num_class))], axis=1)
+    #
+    # scores = confidence * class_probabilities
+    # boxes = tf.expand_dims(boxes, axis=-2)
+    # boxes = boxes / input_shape[0]  # box normalization: relative img size
+
+    boxes, scores, class_probabilities, _ = decode(model_ouputs, input_shape, num_class)
+    print(f'nms iou: {iou_threshold} score: {score_threshold}')
+    (nmsed_boxes,      # [bs, max_detections, 4]
+     nmsed_scores,     # [bs, max_detections]
+     nmsed_classes,    # [bs, max_detections]
+     valid_detections  # [batch_size]
+     ) = tf.image.combined_non_max_suppression(
+        boxes=boxes,  # y1x1, y2x2 [0~1]
+        scores=scores,
+        max_output_size_per_class=100,
+        max_total_size=100,  # max_boxes: Maximum nmsed_boxes in a single img.
+        iou_threshold=iou_threshold,  # iou_threshold: Minimum overlap that counts as a valid detection.
+        score_threshold=score_threshold,  # # Minimum confidence that counts as a valid detection.
+    )
+    return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
+
+def decode(model_ouputs, input_shape, num_class):
     bs = tf.shape(model_ouputs[0])[0]
     boxes = tf.zeros((bs, 0, 4))
     confidence = tf.zeros((bs, 0, 1))
@@ -282,17 +316,6 @@ def nms(model_ouputs, input_shape, num_class, iou_threshold=0.413, score_thresho
     scores = confidence * class_probabilities
     boxes = tf.expand_dims(boxes, axis=-2)
     boxes = boxes / input_shape[0]  # box normalization: relative img size
-    print(f'nms iou: {iou_threshold} score: {score_threshold}')
-    (nmsed_boxes,      # [bs, max_detections, 4]
-     nmsed_scores,     # [bs, max_detections]
-     nmsed_classes,    # [bs, max_detections]
-     valid_detections  # [batch_size]
-     ) = tf.image.combined_non_max_suppression(
-        boxes=boxes,  # y1x1, y2x2 [0~1]
-        scores=scores,
-        max_output_size_per_class=100,
-        max_total_size=100,  # max_boxes: Maximum nmsed_boxes in a single img.
-        iou_threshold=iou_threshold,  # iou_threshold: Minimum overlap that counts as a valid detection.
-        score_threshold=score_threshold,  # # Minimum confidence that counts as a valid detection.
-    )
-    return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
+    valid_detections = [int(class_probabilities.shape[1])] * bs
+
+    return scores, boxes, class_probabilities, valid_detections
