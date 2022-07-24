@@ -256,7 +256,7 @@ def build_model():
     [route0, route1, route2] = cspdarknet53(inputs)
     [conv_sbbox, conv_mbbox, conv_lbbox] = build_v4neck([route0, route1, route2], num_classes=80)
 
-    model = tf.keras.modesl.Model(inputs, [conv_sbbox, conv_mbbox, conv_lbbox])
+    model = tf.keras.models.Model(inputs, [conv_sbbox, conv_mbbox, conv_lbbox])
     return model
 
 
