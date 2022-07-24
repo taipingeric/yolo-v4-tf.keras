@@ -222,7 +222,7 @@ def build_v4neck(inputs, num_classes):
 
     route0 = x
     x = conv(x, 256, 3)
-    conv_sbbox = conv(x, 3 * (num_classes + 5), 1, activation=None, batch_norm=False)
+    conv_sbbox = build_head(x, num_classes)
 
     x = conv(route0, 256, 3, downsampling=True)
     x = layers.Concatenate()([x, route1])
@@ -235,7 +235,7 @@ def build_v4neck(inputs, num_classes):
 
     route1 = x
     x = conv(x, 512, 3)
-    conv_mbbox = conv(x, 3 * (num_classes + 5), 1, activation=None, batch_norm=False)
+    conv_mbbox = build_head(x, num_classes)
 
     x = conv(route1, 512, 3, downsampling=True)
     x = layers.Concatenate()([x, route_input])
@@ -247,9 +247,12 @@ def build_v4neck(inputs, num_classes):
     x = conv(x, 512, 1)
 
     x = conv(x, 1024, 3)
-    conv_lbbox = conv(x, 3 * (num_classes + 5), 1, activation=None, batch_norm=False)
+    conv_lbbox = build_head(x, num_classes)
 
     return [conv_sbbox, conv_mbbox, conv_lbbox]
+
+def build_head(x, num_classes):
+    return conv(x, 3*(num_classes+5), 1, activation=None, batch_norm=False)
 
 def build_model():
     inputs = layers.Input((416, 416, 3))
