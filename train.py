@@ -271,10 +271,10 @@ def build_model():
 
 if __name__ == '__main__':
     print('GG')
-    FOLDER_PATH = './yolo-v4-tf.keras'
-    train_lines, val_lines = read_annotation_lines('./dataset/train_txt/bccd_annotation.txt',
+    FOLDER_PATH = './'
+    train_lines, val_lines = read_annotation_lines('../dataset/train_txt/bccd_annotation.txt',
                                                    test_size=0.2)
-    IMG_FOLDER_PATH = './dataset/train_img'
+    IMG_FOLDER_PATH = '../dataset/train_img'
     NUM_CLASSES = 3
     # bccd classes names
     class_name_path = os.path.join(FOLDER_PATH, 'class_names/bccd_classes.txt')
