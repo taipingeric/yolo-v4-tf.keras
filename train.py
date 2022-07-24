@@ -278,6 +278,9 @@ if __name__ == '__main__':
     NUM_CLASSES = 3
     # bccd classes names
     class_name_path = os.path.join(FOLDER_PATH, 'class_names/bccd_classes.txt')
+    print('class_name_path ', class_name_path)
+    print('train_lines ', train_lines[:4])
+    print('val_lines ', val_lines[:4])
 
     data_gen_train = DataGenerator(train_lines, NUM_CLASSES, IMG_FOLDER_PATH)
     data_gen_val = DataGenerator(val_lines, NUM_CLASSES, IMG_FOLDER_PATH)
