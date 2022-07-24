@@ -1,6 +1,12 @@
 import tensorflow as tf
 from tensorflow.keras import layers, initializers, models
+from utils import DataGenerator, read_annotation_lines
+from models import Yolov4
+from config import yolo_config
 
+import os
+from glob import glob
+import numpy as np
 
 def conv(x, filters, kernel_size, downsampling=False, activation='leaky', batch_norm=True):
     def mish(x):
@@ -265,11 +271,26 @@ def build_model():
 
 if __name__ == '__main__':
     print('GG')
-    inputs = tf.random.normal((1, 416, 416, 3))
-    model = build_model()
-    [conv_sbbox, conv_mbbox, conv_lbbox] = model(inputs)
+    FOLDER_PATH = './yolo-v4-tf.keras'
+    train_lines, val_lines = read_annotation_lines('./dataset/train_txt/bccd_annotation.txt',
+                                                   test_size=0.2)
+    IMG_FOLDER_PATH = './dataset/train_img'
+    NUM_CLASSES = 3
+    # bccd classes names
+    class_name_path = os.path.join(FOLDER_PATH, 'class_names/bccd_classes.txt')
 
-    print(conv_sbbox.shape)
-    print(conv_mbbox.shape)
-    print(conv_lbbox.shape)
+    data_gen_train = DataGenerator(train_lines, NUM_CLASSES, IMG_FOLDER_PATH)
+    data_gen_val = DataGenerator(val_lines, NUM_CLASSES, IMG_FOLDER_PATH)
+
+    # inputs = tf.random.normal((1, 416, 416, 3))
+    # model = build_model()
+    # [conv_sbbox, conv_mbbox, conv_lbbox] = model(inputs)
+    #
+    # print(conv_sbbox.shape)
+    # print(conv_mbbox.shape)
+    # print(conv_lbbox.shape)
+
+
+
+
 
