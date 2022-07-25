@@ -260,10 +260,10 @@ def build_v4neck(inputs, num_classes):
 def build_head(x, num_classes):
     return conv(x, 3*(num_classes+5), 1, activation=None, batch_norm=False)
 
-def build_model():
+def build_model(num_classes=80):
     inputs = layers.Input((416, 416, 3))
     [route0, route1, route2] = cspdarknet53(inputs)
-    [conv_sbbox, conv_mbbox, conv_lbbox] = build_v4neck([route0, route1, route2], num_classes=80)
+    [conv_sbbox, conv_mbbox, conv_lbbox] = build_v4neck([route0, route1, route2], num_classes=num_classes)
 
     model = tf.keras.models.Model(inputs, [conv_sbbox, conv_mbbox, conv_lbbox])
     return model
