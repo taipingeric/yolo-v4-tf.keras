@@ -146,17 +146,16 @@ class DataGenerator(Sequence):
         return int(np.ceil(len(self.annotation_lines) / self.batch_size))
 
     def __getitem__(self, index):
-        'Generate one batch of data'
-
+        """
+        Generate one batch of data
+        return: [X, *y_tensor, y_bbox], np.zeros(len(lines))
+        """
         # Generate indexes of the batch
         idxs = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
-
         # Find list of IDs
         lines = [self.annotation_lines[i] for i in idxs]
-
         # Generate data
         X, y_tensor, y_bbox = self.__data_generation(lines)
-
         return [X, *y_tensor, y_bbox], np.zeros(len(lines))
 
     def on_epoch_end(self):
@@ -220,7 +219,8 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes):
     Returns
     -------
     y_true: list of array, shape like yolo_outputs, xywh are reletive value
-
+        [(?, 52, 52, 3, 5+num_classes) (?, 26, 26, 3, 5+num_classes)  (?, 13, 13, 3, 5+num_classes) ]
+    y_true_boxes_xywh
     '''
 
     num_stages = 3  # default setting for yolo, tiny yolo will be 2
