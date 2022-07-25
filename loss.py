@@ -128,9 +128,9 @@ def yolo_loss(args, num_classes, iou_loss_thresh, anchors):
     mbbox_ciou_loss, mbbox_conf_loss, mbbox_prob_loss = loss_layer(conv_mbbox, pred_mbbox, label_mbbox, true_bboxes, 16, num_classes, iou_loss_thresh)
     lbbox_ciou_loss, lbbox_conf_loss, lbbox_prob_loss = loss_layer(conv_lbbox, pred_lbbox, label_lbbox, true_bboxes, 32, num_classes, iou_loss_thresh)
 
-    ciou_loss = (lbbox_ciou_loss + sbbox_ciou_loss + mbbox_ciou_loss) * 3.54
-    conf_loss = (lbbox_conf_loss + sbbox_conf_loss + mbbox_conf_loss) * 64.3
-    prob_loss = (lbbox_prob_loss + sbbox_prob_loss + mbbox_prob_loss) * 1
+    ciou_loss = (lbbox_ciou_loss + sbbox_ciou_loss + mbbox_ciou_loss)# * 3.54
+    conf_loss = (lbbox_conf_loss + sbbox_conf_loss + mbbox_conf_loss)# * 64.3
+    prob_loss = (lbbox_prob_loss + sbbox_prob_loss + mbbox_prob_loss)# * 1
 
     return ciou_loss+conf_loss+prob_loss
 
