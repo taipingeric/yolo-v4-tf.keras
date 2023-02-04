@@ -80,7 +80,7 @@ class Yolov4(object):
                 self.training_model.load_weights(self.weight_path)
                 print(f'load from {self.weight_path}')
 
-        self.training_model.compile(optimizer=optimizers.Adam(learning_rate=1e-3),
+        self.training_model.compile(optimizer=optimizers.Adam(learning_rate=1e-4),
                                     loss={'yolo_loss': lambda y_true, y_pred: y_pred})
 
     def load_model(self, path):
